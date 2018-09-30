@@ -23,6 +23,7 @@ OBJ
 
     max31856    : "core.con.max31856"
     spi         : "SPI_Asm"
+    types       : "system.types"
 
 PUB null
 ''This is not a top-level object
@@ -45,6 +46,10 @@ PUB readTC(ptr_tcdata)
 
     ptr_tcdata := readX($0C, 3)
 
+PUB ReadCJ
+
+    result := (readX(max31856#REG_CJTH_R, 2) & $FFFF) >> 2
+
 PUB readth
 
     result := readX(max31856#LTCBH, 3) >> 5
@@ -62,6 +67,13 @@ PUB ConversionMode(mode) | cmd_packet
 
     writeX(cmd_packet, 16)
 
+PUB SetCJOffset(offset) | cmd_packet
+
+    cmd_packet.byte[1] := max31856#REG_CJTO_W
+    cmd_packet.byte[0] := offset
+    cmd_packet &= $FFFF
+    writeX(cmd_packet, 16)
+
 PUB writeX(data, nr_bits)
 '' Write nr_bits of data
     Low (_cs)
@@ -77,13 +89,13 @@ PUB readX(reg, nr_bytes): read
 
 PRI High(pin)
 '' Abbreviated way to bring an output pin high
-   dira[pin] := 0
-   outa[pin] := 0
+   dira[pin] := 1{0}
+   outa[pin] := 1{0}
 
 PRI Low(pin)
 '' Abbreviated way to bring an output pin low
-   dira[pin] := 1
-   outa[pin] := 0
+   dira[pin] := 1{0}
+   outa[pin] := 0{0}
 
 DAT
 {

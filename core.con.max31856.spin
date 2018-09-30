@@ -39,7 +39,7 @@ CON
     REG_LTLFTL_R    = $08
     REG_LTLFTL_W    = REG_LTLFTL_R|W
 
-'' Cold-junction Temperature Offset
+'' Cold-junction Temperature Offset - LSB=0.0625 deg C (-8C to +7.9375C) - 8 bit signed
     REG_CJTO_R      = $09
     REG_CJTO_W      = REG_CJTO_R|W
 

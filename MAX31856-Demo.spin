@@ -30,31 +30,57 @@ VAR
 
     long _max_cog, _ser_cog
 
-PUB Main | i, r, tmp, tmpf, temp, f, scl
+PUB Main | i, r, tc, tc_tmp, tc_res, scl, cj, cj_tmp, cj_res
 
     Setup
     ser.Clear
 '    f := 7 '.0078125
-    f := 0.0078125
+    tc_res := 0.0078125
+    cj_res := 0.015625
     scl := 1000
 
-    i := max31856.readX ($01, 1)
-    ser.Position (0, 0)
-    ser.Str (string("Data: "))
-    ser.Hex (i, 2)
+{    i := max31856.readX ($01, 1)
+    ifnot i == $03
+        flash(26)}
+    max31856.SetCJOffset (7)
+    repeat i from $0 to $F
+        ser.Hex (i, 2)
+        ser.Char (" ")
+        ser.Hex (max31856.readX (i, 1), 2)
+        ser.char(10)
+        ser.Char (13)
+'    repeat
     max31856.ConversionMode(max31856#CMODE_AUTO)
 
-'Floating-point
+{'Floating-point
+    repeat i from 0 to (1 << 6)
+        r := math.FMul (math.FFloat (i), 0.0625)
+        ser.Dec (i)
+        ser.Char (" ")
+        ser.Str (fs.FloatToString (r))
+        ser.char(10)
+        ser.Char (13)
     repeat
-        ser.Position (0, 1)
-        tmp := max31856.readth
-        tmpf := math.FFloat (tmp)
-        temp := ctof(math.FMul (tmpf, f))
+}
+    repeat
+        cj := math.FFloat (max31856.ReadCJ)
+'        cj_tmp := ctof(math.FMul (cj, cj_res))
+        cj_tmp := math.FMul (cj, cj_res)
+        ser.Position (0, 0)
+        ser.Str (string("Cold junction temp: "))
+        ser.Str (fs.FloatToString (cj_tmp))
 
-        ser.Str (fs.FloatToString (temp))
+
+        tc := math.FFloat (max31856.readth)
+'        tc_tmp := ctof(math.FMul (tc, tc_res))
+        tc_tmp := math.FMul (tc, tc_res)
+        ser.Position (0, 2)
+        ser.Str (string("Thermocouple temp: "))
+        ser.Str (fs.FloatToString (tc_tmp))
+
         time.MSleep (250)
 
-'Fixed-point
+{'Fixed-point
     repeat
         ser.Position (0, 5)
         tmp := max31856.readth
@@ -64,7 +90,7 @@ PUB Main | i, r, tmp, tmpf, temp, f, scl
         ser.Dec (ctof(temp))
         ser.Chars (32, 5)
         time.MSleep (100)
-
+}
 PUB ctof (c): f
 'T(°F) = T(°C) × 9/5 + 32
 ' 9/5 = 1800 + 32
@@ -72,6 +98,13 @@ PUB ctof (c): f
 '    f := c * 1800 + (32 * 1_000_000)
 '    f := (c * 1800 + 32) / 1000
 
+
+PUB flash(led_pin)
+
+    dira[led_pin] := 1
+    repeat
+        !outa[led_pin]
+        time.MSleep (100)
 
 PUB Setup
 
