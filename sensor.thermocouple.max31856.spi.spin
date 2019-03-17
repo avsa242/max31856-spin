@@ -12,8 +12,11 @@
 
 CON
 
-    CMODE_OFF   = 0
-    CMODE_AUTO  = 1
+    CMODE_OFF       = 0
+    CMODE_AUTO      = 1
+
+    FAULTMODE_COMP  = 0
+    FAULTMODE_INT   = 1
 
 VAR
 
@@ -93,6 +96,26 @@ PUB CJSensor(enabled) | tmp
 
     tmp &= core#MASK_CJ
     tmp := (tmp | enabled) & core#CR0_MASK
+    writeRegX (core#CR0, 1, @tmp)
+
+PUB FaultMode(mode) | tmp
+' Defines behavior of fault flag
+'   Valid values:
+'       *FAULTMODE_COMP (0): Comparator mode - fault flag will be asserted when fault condition is true, and will clear
+'           when the condition is no longer true, with a 2deg C hysteresis.
+'       FAULTMODE_INT (1): Interrupt mode - fault flag will be asserted when fault condition is true, and will remain
+'           asserted until fault status is explicitly cleared with FaultClear.
+'           NOTE: If the fault condition is still true when the status is cleared, the flag will be asserted again immediately.
+'   Any other value polls the chip and returns the current setting
+    readRegX (core#CR0, 1, @tmp)
+    case mode
+        FAULTMODE_COMP, FAULTMODE_INT:
+            mode := mode << core#FLD_FAULT
+        OTHER:
+            return result := ((tmp >> core#FLD_FAULT) & 1)
+
+    tmp &= core#MASK_FAULT
+    tmp := (tmp | mode) & core#CR0_MASK
     writeRegX (core#CR0, 1, @tmp)
 
 PUB FaultTestTime(time_ms) | tmp 'XXX Note recommendations based on circuit design
