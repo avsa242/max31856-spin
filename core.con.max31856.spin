@@ -24,7 +24,20 @@ CON
     CR0                 = $00
     CR0_MASK            = $FF
         FLD_CMODE       = 7
+        FLD_ONESHOT     = 6
+        FLD_OCFAULT     = 4
+        FLD_CJ          = 3
+        FLD_FAULT       = 2
+        FLD_FAULTCLR    = 1
+        FLD_NOTCHFILT   = 0
+        BITS_OCFAULT    = %11
         MASK_CMODE      = CR0_MASK ^ (1 << FLD_CMODE)
+        MASK_ONESHOT    = CR0_MASK ^ (1 << FLD_ONESHOT)
+        MASK_OCFAULT    = CR0_MASK ^ (BITS_OCFAULT << FLD_OCFAULT)
+        MASK_CJ         = CR0_MASK ^ (1 << FLD_CJ)
+        MASK_FAULT      = CR0_MASK ^ (1 << FLD_FAULT)
+        MASK_FAULTCLR   = CR0_MASK ^ (1 << FLD_FAULTCLR)
+        MASK_NOTCHFILT  = CR0_MASK ^ (1 << FLD_NOTCHFILT)
 
     CR1                 = $01
 

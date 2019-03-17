@@ -69,8 +69,8 @@ PUB ConversionMode(mode) | tmp
     tmp := (tmp | mode) & core#CR0_MASK
     writeRegX (core#CR0, 1, @tmp)
 
-PUB CJOffset(offset) | tmp
-
+PUB CJOffset(offset) | tmp  'XXX Make param units degrees
+' Set Cold-Junction temperature sensor offset
     readRegX (core#CJTO, 2, @tmp)
     case offset
         -128..127:
@@ -79,6 +79,18 @@ PUB CJOffset(offset) | tmp
             return tmp
 
     writeRegX (core#CJTO, 1, @tmp)
+
+PUB OneShot | tmp
+' Perform single cold-junction and thermocouple conversion
+' NOTE: Single conversion is performed only if ConversionMode is set to CMODE_OFF (Normally Off)
+' Approximate conversion times:
+'   Filter Setting      Time
+'   60Hz                143ms
+'   50Hz                169ms
+    readRegX (core#CR0, 1, @tmp)
+    tmp &= core#MASK_ONESHOT
+    tmp := (tmp | (1 << core#FLD_ONESHOT)) & core#CR0_MASK
+    writeRegX (core#CR0, 1, @tmp)
 
 PUB writeRegX(reg, nr_bytes, buf_addr) | tmp
 ' Write reg to MOSI
