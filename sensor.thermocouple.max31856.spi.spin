@@ -56,7 +56,7 @@ PUB ThermoCoupleTemp
 PUB ConversionMode(mode) | tmp
 ' Enable automatic conversion mode
 '   Valid values: CMODE_OFF (0): Normally Off (default), CMODE_AUTO (1): Automatic Conversion Mode
-'   Any other value polls the chip and returns the current value
+'   Any other value polls the chip and returns the current setting
 '   NOTE: In Automatic mode, conversions occur continuously approx. every 100ms
     readRegX (core#CR0, 1, @tmp)
     case mode
@@ -80,9 +80,25 @@ PUB CJOffset(offset) | tmp  'XXX Make param units degrees
 
     writeRegX (core#CJTO, 1, @tmp)
 
+PUB CJSensor(enabled) | tmp
+' Enable the on-chip Cold-Junction temperature sensor
+'   Valid values: TRUE (-1 or 1), FALSE
+'   Any other value polls the chip and returns the current setting
+    readRegX (core#CR0, 2, @tmp)
+    case ||enabled
+        0, 1:
+            enabled := ||enabled << core#FLD_CJ
+        OTHER:
+            result := ((tmp >> core#FLD_CJ) & %1) * TRUE
+
+    tmp &= core#MASK_CJ
+    tmp := (tmp | enabled) & core#CR0_MASK
+    writeRegX (core#CR0, 1, @tmp)
+
 PUB FaultTestTime(time_ms) | tmp 'XXX Note recommendations based on circuit design
 ' Sets open-circuit fault detection test time, in ms
 '   Valid values: 0 (disable fault detection), 10, 32, 100
+'   Any other value polls the chip and returns the current setting
     readRegX (core#CR0, 1, @tmp)
     case time_ms
         0, 10, 32, 100:
