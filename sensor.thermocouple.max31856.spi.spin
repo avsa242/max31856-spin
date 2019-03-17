@@ -98,6 +98,14 @@ PUB CJSensor(enabled) | tmp
     tmp := (tmp | enabled) & core#CR0_MASK
     writeRegX (core#CR0, 1, @tmp)
 
+PUB FaultClear | tmp
+' Clear fault status
+'   NOTE: This has no effect when FaultMode is set to FAULTMODE_COMP
+    readRegX (core#CR0, 1, @tmp)
+    tmp &= core#MASK_FAULTCLR
+    tmp := (tmp | (1 << core#FLD_FAULTCLR)) & core#CR0_MASK
+    writeRegX (core#CR0, 1, @tmp)
+
 PUB FaultMode(mode) | tmp
 ' Defines behavior of fault flag
 '   Valid values:
