@@ -25,7 +25,7 @@ OBJ
     spi     : "SPI_Asm"
     types   : "system.types"
 
-PUB null
+PUB Null
 ''This is not a top-level object
 
 PUB Start (CS_PIN, SDI_PIN, SDO_PIN, SCK_PIN): okay
@@ -44,19 +44,20 @@ PUB Stop
     spi.stop
 
 PUB ColdJuncTemp
-
+' Read the Cold-Junction temperature sensor
     readRegX (core#CJTH, 2, @result)
     result := (result & $FFFF) >> 2
 
 PUB ThermoCoupleTemp
-
+' Read the Thermocouple temperature
     readRegX (core#LTCBH, 3, @result)
     result := result >> 5
 
-PUB ReadConfig
-
 PUB ConversionMode(mode) | tmp
-
+' Enable automatic conversion mode
+'   Valid values: CMODE_OFF (0): Normally Off (default), CMODE_AUTO (1): Automatic Conversion Mode
+'   Any other value polls the chip and returns the current value
+'   NOTE: In Automatic mode, conversions occur continuously approx. every 100ms
     readRegX (core#CR0, 1, @tmp)
     case mode
         CMODE_OFF, CMODE_AUTO:
@@ -79,20 +80,6 @@ PUB CJOffset(offset) | tmp
 
     writeRegX (core#CJTO, 1, @tmp)
 
-{PUB writeX(data, nr_bits)
-'' Write nr_bits of data
-    Low (_cs)
-    spi.SHIFTOUT (_mosi, _sck, spi#MSBFIRST, nr_bits, data)
-    High (_cs)
-}
-{
-PUB readX(reg, nr_bytes): read
-'' Read nr_bytes of data from register 'reg'
-    Low (_cs)
-    spi.SHIFTOUT (_mosi, _sck, spi#MSBFIRST, 8, reg)
-    read := spi.SHIFTIN (_miso, _sck, SPI#MSBPOST, nr_bytes * 8)
-    High (_cs)
-}
 PUB writeRegX(reg, nr_bytes, buf_addr) | tmp
 ' Write reg to MOSI
     outa[_CS] := 0
