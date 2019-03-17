@@ -80,6 +80,20 @@ PUB CJOffset(offset) | tmp  'XXX Make param units degrees
 
     writeRegX (core#CJTO, 1, @tmp)
 
+PUB FaultTestTime(time_ms) | tmp 'XXX Note recommendations based on circuit design
+' Sets open-circuit fault detection test time, in ms
+'   Valid values: 0 (disable fault detection), 10, 32, 100
+    readRegX (core#CR0, 1, @tmp)
+    case time_ms
+        0, 10, 32, 100:
+            time_ms := lookdownz(time_ms: 0, 10, 32, 100) << core#FLD_OCFAULT
+        OTHER:
+            return result := ((tmp >> core#FLD_OCFAULT) & core#BITS_OCFAULT)
+
+    tmp &= core#MASK_OCFAULT
+    tmp := (tmp | time_ms) & core#CR0_MASK
+    writeRegX (core#CR0, 1, @tmp)
+
 PUB OneShot | tmp
 ' Perform single cold-junction and thermocouple conversion
 ' NOTE: Single conversion is performed only if ConversionMode is set to CMODE_OFF (Normally Off)
