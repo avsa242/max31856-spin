@@ -1,61 +1,55 @@
+{
+    --------------------------------------------
+    Filename: core.con.max31856.spin
+    Author: Jesse Burt
+    Description: Low-level driver constants
+    Copyright (c) 2019
+    Created: Sep 30, 2018
+    Updated: Mar 16, 2019
+    See end of file for terms of use.
+    --------------------------------------------
+}
+
 CON
 
-'' SPI Clock Polarity/Mode
-    CPOL            = 1
+' SPI Clock Polarity/Mode
+    CPOL                = 1
+    CLK_DELAY           = 10
+    MOSI_BITORDER       = 5             'MSBFIRST
+    MISO_BITORDER       = 2             'MSBPOST
 
-'' Read register addresses ORd with $80 to form Write Addresses
-    W               = $80
+' Read register addresses ORd with $80 to form Write Addresses
+    WRITE_REG           = $80
 
-'' Configuration 0
-    REG_CR0_R       = $00
-    REG_CR0_W       = REG_CR0_R|W
-        CMODE_OFF   = %0
-        CMODE_AUTO  = %1 << 7
-'' Configuration 1
-    REG_CR1_R       = $01
-    REG_CR1_W       = REG_CR1_R|W
+    CR0                 = $00
+    CR0_MASK            = $FF
+        FLD_CMODE       = 7
+        MASK_CMODE      = CR0_MASK ^ (1 << FLD_CMODE)
 
-'' Fault mask
-    REG_MASK_R      = $02
-    REG_MASK_W      = REG_MASK_R|W
+    CR1                 = $01
 
-'' Cold-junction high-fault threshold
-    REG_CJHF_R      = $03
-    REG_CJHF_W      = REG_CJHF_R|W
+    MASK                = $02
 
-'' Cold-junction low-fault threshold
-    REG_CJLF_R      = $04
-    REG_CJLF_W      = REG_CJLF_R|W
+    CJHF                = $03
 
-'' Linearized temperature High-fault threshold
-    REG_LTHFTH_R    = $05
-    REG_LTHFTH_W    = REG_LTHFTH_R|W
-    REG_LTHFTL_R    = $06
-    REG_LTHFTL_W    = REG_LTHFTL_R|W
+    CJLF                = $04
 
-'' Linearized temperature Low-fault threshold
-    REG_LTLFTH_R    = $07
-    REG_LTLFTH_W    = REG_LTLFTH_R|W
-    REG_LTLFTL_R    = $08
-    REG_LTLFTL_W    = REG_LTLFTL_R|W
+    LTHFTH              = $05
+    LTHFTL              = $06
 
-'' Cold-junction Temperature Offset - LSB=0.0625 deg C (-8C to +7.9375C) - 8 bit signed
-    REG_CJTO_R      = $09
-    REG_CJTO_W      = REG_CJTO_R|W
+    LTLFTH              = $07
+    LTLFTL              = $08
 
-'' Cold-junction Temperature
-    REG_CJTH_R      = $0A
-    REG_CJTH_W      = REG_CJTH_R|W
-    REG_CJTL_R      = $0B
-    REG_CJTL_W      = REG_CJTL_R|W
+    CJTO                = $09
 
-'' Linearized TC Temperature (19bits; LTCBH=MSB, LTCBL=LSB, 5 LSB of LTCBL unused)
-    LTCBH           = $0C
-    LTCBM           = $0D
-    LTCBL           = $0E
+    CJTH                = $0A
+    CJTL                = $0B
+
+    LTCBH               = $0C
+    LTCBM               = $0D
+    LTCBL               = $0E
     
-'' Fault Status
-    REG_SR          = $0F
+    SR                  = $0F
     
 PUB Null
-'' This is not a top-level object
+' This is not a top-level object

@@ -5,97 +5,120 @@
     Description: Driver object for Maxim's MAX31856 thermocouple amplifier (4W SPI)
     Copyright (c) 2018
     Created: Sep 30, 2018
-    Updated: Sep 30, 2018
+    Updated: Mar 16, 2019
     See end of file for terms of use.
     --------------------------------------------
 }
 
 CON
 
-    CMODE_OFF   = max31856#CMODE_OFF
-    CMODE_AUTO  = max31856#CMODE_AUTO
-    
+    CMODE_OFF   = 0
+    CMODE_AUTO  = 1
+
 VAR
 
-    byte _cs, _sdi, _sdo, _sck
+    byte _cs, _mosi, _miso, _sck
 
 OBJ
 
-    max31856    : "core.con.max31856"
-    spi         : "SPI_Asm"
-    types       : "system.types"
+    core    : "core.con.max31856"
+    spi     : "SPI_Asm"
+    types   : "system.types"
 
 PUB null
 ''This is not a top-level object
 
 PUB Start (CS_PIN, SDI_PIN, SDO_PIN, SCK_PIN): okay
 
-    if okay := spi.start (10, max31856#CPOL)
+    if okay := spi.start (core#CLK_DELAY, core#CPOL)
         _cs := CS_PIN
-        _sdi := SDI_PIN
-        _sdo := SDO_PIN
+        _mosi := SDI_PIN
+        _miso := SDO_PIN
         _sck := SCK_PIN
+        dira[_cs] := 1
     else
-        Stop
+        return FALSE
 
 PUB Stop
 
     spi.stop
 
-PUB readTC(ptr_tcdata)
+PUB ColdJuncTemp
 
-    ptr_tcdata := readX($0C, 3)
+    readRegX (core#CJTH, 2, @result)
+    result := (result & $FFFF) >> 2
 
-PUB ReadCJ
+PUB ThermoCoupleTemp
 
-    result := (readX(max31856#REG_CJTH_R, 2) & $FFFF) >> 2
-
-PUB readth
-
-    result := readX(max31856#LTCBH, 3) >> 5
+    readRegX (core#LTCBH, 3, @result)
+    result := result >> 5
 
 PUB ReadConfig
 
-PUB ConversionMode(mode) | cmd_packet
+PUB ConversionMode(mode) | tmp
 
+    readRegX (core#CR0, 1, @tmp)
     case mode
         CMODE_OFF, CMODE_AUTO:
-        OTHER: return
+            mode := (mode << core#FLD_CMODE)
+        OTHER:
+            return result := (tmp >> core#FLD_CMODE) & %1
 
-    cmd_packet.byte[1] := max31856#REG_CR0_W
-    cmd_packet.byte[0] := mode
+    tmp &= core#MASK_CMODE
+    tmp := (tmp | mode) & core#CR0_MASK
+    writeRegX (core#CR0, 1, @tmp)
 
-    writeX(cmd_packet, 16)
+PUB CJOffset(offset) | tmp
 
-PUB SetCJOffset(offset) | cmd_packet
+    readRegX (core#CJTO, 2, @tmp)
+    case offset
+        -128..127:
+            offset := types.s8 (offset)
+        OTHER:
+            return tmp
 
-    cmd_packet.byte[1] := max31856#REG_CJTO_W
-    cmd_packet.byte[0] := offset
-    cmd_packet &= $FFFF
-    writeX(cmd_packet, 16)
+    writeRegX (core#CJTO, 1, @tmp)
 
-PUB writeX(data, nr_bits)
+{PUB writeX(data, nr_bits)
 '' Write nr_bits of data
     Low (_cs)
-    spi.SHIFTOUT (_sdi, _sck, spi#MSBFIRST, nr_bits, data)
+    spi.SHIFTOUT (_mosi, _sck, spi#MSBFIRST, nr_bits, data)
     High (_cs)
-
+}
+{
 PUB readX(reg, nr_bytes): read
 '' Read nr_bytes of data from register 'reg'
     Low (_cs)
-    spi.SHIFTOUT (_sdi, _sck, spi#MSBFIRST, 8, reg)
-    read := spi.SHIFTIN (_sdo, _sck, SPI#MSBPOST, nr_bytes * 8)
+    spi.SHIFTOUT (_mosi, _sck, spi#MSBFIRST, 8, reg)
+    read := spi.SHIFTIN (_miso, _sck, SPI#MSBPOST, nr_bytes * 8)
     High (_cs)
+}
+PUB writeRegX(reg, nr_bytes, buf_addr) | tmp
+' Write reg to MOSI
+    outa[_CS] := 0
+    case nr_bytes
+        1..4:
+            spi.SHIFTOUT (_mosi, _sck, core#MOSI_BITORDER, 8, reg | core#WRITE_REG)     'Command w/nr_bytes data bytes following
+            repeat tmp from 0 to nr_bytes-1
+                spi.SHIFTOUT (_mosi, _sck, core#MOSI_BITORDER, 8, byte[buf_addr][tmp])
+        OTHER:
+            result := FALSE
+            buf_addr := 0
+    outa[_CS] := 1
 
-PRI High(pin)
-'' Abbreviated way to bring an output pin high
-   dira[pin] := 1{0}
-   outa[pin] := 1{0}
+PUB readRegX(reg, nr_bytes, buf_addr) | tmp
+' Read reg from MISO
+    outa[_CS] := 0
+    spi.SHIFTOUT (_mosi, _sck, core#MOSI_BITORDER, 8, reg)              'Which register to query
 
-PRI Low(pin)
-'' Abbreviated way to bring an output pin low
-   dira[pin] := 1{0}
-   outa[pin] := 0{0}
+    case nr_bytes
+        1..4:
+            repeat tmp from 0 to nr_bytes-1
+                byte[buf_addr][tmp] := spi.SHIFTIN (_miso, _sck, core#MISO_BITORDER, 8)
+        OTHER:
+            result := FALSE
+            buf_addr := 0
+    outa[_CS] := 1
 
 DAT
 {

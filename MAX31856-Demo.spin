@@ -1,8 +1,11 @@
 {
     --------------------------------------------
-    Filename:
-    Author:
-    Copyright (c) 20__
+    Filename: MAX31856-Demo.spin
+    Description: Demo for the MAX31856 driver
+    Author: Jesse Burt
+    Copyright (c) 2019
+    Created Sep 30, 2018
+    Updated Mar 16, 2019
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -19,7 +22,7 @@ CON
 
 OBJ
 
-    cfg     : "core.con.client.flip"
+    cfg     : "core.con.boardcfg.flip"
     ser     : "com.serial.terminal"
     time    : "time"
     max31856: "sensor.thermocouple.max31856.spi"
@@ -42,7 +45,7 @@ PUB Main | i, r, tc, tc_tmp, tc_res, scl, cj, cj_tmp, cj_res
 {    i := max31856.readX ($01, 1)
     ifnot i == $03
         flash(26)}
-    max31856.SetCJOffset (7)
+    max31856.CJOffset (7)
     repeat i from $0 to $F
         ser.Hex (i, 2)
         ser.Char (" ")
@@ -64,16 +67,16 @@ PUB Main | i, r, tc, tc_tmp, tc_res, scl, cj, cj_tmp, cj_res
 }
     repeat
         cj := math.FFloat (max31856.ReadCJ)
-'        cj_tmp := ctof(math.FMul (cj, cj_res))
-        cj_tmp := math.FMul (cj, cj_res)
+        cj_tmp := ctof(math.FMul (cj, cj_res))
+ '       cj_tmp := math.FMul (cj, cj_res)
         ser.Position (0, 0)
         ser.Str (string("Cold junction temp: "))
         ser.Str (fs.FloatToString (cj_tmp))
 
 
         tc := math.FFloat (max31856.readth)
-'        tc_tmp := ctof(math.FMul (tc, tc_res))
-        tc_tmp := math.FMul (tc, tc_res)
+        tc_tmp := ctof(math.FMul (tc, tc_res))
+'        tc_tmp := math.FMul (tc, tc_res)
         ser.Position (0, 2)
         ser.Str (string("Thermocouple temp: "))
         ser.Str (fs.FloatToString (tc_tmp))
