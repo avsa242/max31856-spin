@@ -141,6 +141,30 @@ PUB FaultTestTime(time_ms) | tmp 'XXX Note recommendations based on circuit desi
     tmp := (tmp | time_ms) & core#CR0_MASK
     writeRegX (core#CR0, 1, @tmp)
 
+PUB NotchFilter(Hz) | tmp, cmode_tmp
+' Select noise rejection filter frequency, in Hz
+'   Valid values: 50, 60*
+'   Any other value polls the chip and returns the current setting
+'   NOTE: The conversion mode will be temporarily set to Normally Off when changing notch filter settings
+'       per MAX31856 datasheet, if it isn't already.
+   if cmode_tmp := ConversionMode (-2)
+        ConversionMode (CMODE_OFF)
+
+    readRegX (core#CR0, 1, @tmp)
+    case Hz
+        50, 60:
+            Hz := lookdownz(Hz: 60, 50)
+        OTHER:
+            result := tmp & core#BITS_OCFAULT
+            return lookupz(tmp: 60, 50)
+
+    tmp &= core#MASK_NOTCHFILT
+    tmp := (tmp | Hz) & core#CR0_MASK
+    writeRegX (core#CR0, 1, @tmp)
+
+    if cmode_tmp
+        ConversionMode (CMODE_AUTO)
+
 PUB OneShot | tmp
 ' Perform single cold-junction and thermocouple conversion
 ' NOTE: Single conversion is performed only if ConversionMode is set to CMODE_OFF (Normally Off)
