@@ -31,7 +31,7 @@ OBJ
 
 VAR
 
-    long _max_cog, _ser_cog
+    byte _ser_cog
 
 PUB Main | i, r, tc, tc_tmp, tc_res, scl, cj, cj_tmp, cj_res
 
@@ -42,31 +42,10 @@ PUB Main | i, r, tc, tc_tmp, tc_res, scl, cj, cj_tmp, cj_res
     cj_res := 0.015625
     scl := 1000
 
-{    i := max31856.readX ($01, 1)
-    ifnot i == $03
-        flash(26)}
-    max31856.CJOffset (7)
-    repeat i from $0 to $F
-        ser.Hex (i, 2)
-        ser.Char (" ")
-        ser.Hex (max31856.readX (i, 1), 2)
-        ser.char(10)
-        ser.Char (13)
-'    repeat
     max31856.ConversionMode(max31856#CMODE_AUTO)
 
-{'Floating-point
-    repeat i from 0 to (1 << 6)
-        r := math.FMul (math.FFloat (i), 0.0625)
-        ser.Dec (i)
-        ser.Char (" ")
-        ser.Str (fs.FloatToString (r))
-        ser.char(10)
-        ser.Char (13)
     repeat
-}
-    repeat
-        cj := math.FFloat (max31856.ReadCJ)
+        cj := math.FFloat (max31856.ColdJuncTemp)
         cj_tmp := ctof(math.FMul (cj, cj_res))
  '       cj_tmp := math.FMul (cj, cj_res)
         ser.Position (0, 0)
@@ -74,7 +53,7 @@ PUB Main | i, r, tc, tc_tmp, tc_res, scl, cj, cj_tmp, cj_res
         ser.Str (fs.FloatToString (cj_tmp))
 
 
-        tc := math.FFloat (max31856.readth)
+        tc := math.FFloat (max31856.ThermoCoupleTemp)
         tc_tmp := ctof(math.FMul (tc, tc_res))
 '        tc_tmp := math.FMul (tc, tc_res)
         ser.Position (0, 2)
@@ -83,41 +62,31 @@ PUB Main | i, r, tc, tc_tmp, tc_res, scl, cj, cj_tmp, cj_res
 
         time.MSleep (250)
 
-{'Fixed-point
-    repeat
-        ser.Position (0, 5)
-        tmp := max31856.readth
-        ser.Hex (tmp, 8)
-        temp := ((tmp * scl) * f) / scl
-        ser.Char (" ")
-        ser.Dec (ctof(temp))
-        ser.Chars (32, 5)
-        time.MSleep (100)
-}
-PUB ctof (c): f
+PUB CtoF (c): f
 'T(°F) = T(°C) × 9/5 + 32
 ' 9/5 = 1800 + 32
     f := math.FAdd (math.FMul (c, 1.8), 32.0)
-'    f := c * 1800 + (32 * 1_000_000)
-'    f := (c * 1800 + 32) / 1000
-
-
-PUB flash(led_pin)
-
-    dira[led_pin] := 1
-    repeat
-        !outa[led_pin]
-        time.MSleep (100)
 
 PUB Setup
 
     repeat until _ser_cog := ser.Start (115_200)
     ser.Clear
     ser.Str(string("Serial terminal started", ser#NL))
-    if _max_cog := max31856.start (CS, SDI, SDO, SCK)
+    if max31856.start (CS, SDI, SDO, SCK)
         ser.Str(string("max31856 driver started", ser#NL))
-    ser.Str (string("Press any key...", ser#NL))
-    ser.CharIn
+    else
+        ser.Str(string("max31856 driver failed to start - halting", ser#NL))
+        max31856.Stop
+        time.MSleep (500)
+        ser.Stop
+        repeat
+
+PUB Flash(led_pin)
+
+    dira[led_pin] := 1
+    repeat
+        !outa[led_pin]
+        time.MSleep (100)
 
 DAT
 {

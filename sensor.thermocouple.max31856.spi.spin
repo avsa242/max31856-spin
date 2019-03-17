@@ -39,6 +39,7 @@ PUB Start (CS_PIN, SDI_PIN, SDO_PIN, SCK_PIN): okay
         _miso := SDO_PIN
         _sck := SCK_PIN
         dira[_cs] := 1
+        outa[_cs] := 1
     else
         return FALSE
 
