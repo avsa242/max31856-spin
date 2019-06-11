@@ -285,6 +285,18 @@ PUB ThermocoupleHighFault(thresh) | tmp
 
     writeRegX (core#LTHFTH, 2, @thresh)
 
+PUB ThermocoupleLowFault(thresh) | tmp
+' Set Thermocouple LOW fault threshold
+'   Valid values: 0..32767
+'   Any other value polls the chip and returns the current setting
+    readRegX (core#LTLFTH, 2, @tmp)
+    case thresh
+        0..32767:
+        OTHER:
+            return tmp & $7FFF
+
+    writeRegX (core#LTLFTH, 2, @thresh)
+
 PUB ThermoCoupleTemp
 ' Read the Thermocouple temperature
     readRegX (core#LTCBH, 3, @result)
