@@ -273,6 +273,18 @@ PUB ThermoCoupleAvg(samples) | tmp
     tmp := (tmp | samples) & core#CR1_MASK
     writeRegX(core#CR1, 1, @tmp)
 
+PUB ThermocoupleHighFault(thresh) | tmp
+' Set Thermocouple HIGH fault threshold
+'   Valid values: 0..32767
+'   Any other value polls the chip and returns the current setting
+    readRegX (core#LTHFTH, 2, @tmp)
+    case thresh
+        0..32767:
+        OTHER:
+            return tmp & $7FFF
+
+    writeRegX (core#LTHFTH, 2, @thresh)
+
 PUB ThermoCoupleTemp
 ' Read the Thermocouple temperature
     readRegX (core#LTCBH, 3, @result)
