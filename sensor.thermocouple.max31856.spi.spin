@@ -12,14 +12,29 @@
 
 CON
 
+' Sensor resolution (deg C per LSB, scaled up)
+    TC_RES          = 78125 ' 0.0078125 * 10_000_000)
+    CJ_RES          = 15625 ' 0.15625 * 100_000
+
+' Conversion modes
     CMODE_OFF       = 0
     CMODE_AUTO      = 1
 
+' Fault modes
     FAULTMODE_COMP  = 0
     FAULTMODE_INT   = 1
 
-    TC_RES          = 78125 ' 0.0078125 * 10_000_000)
-    CJ_RES          = 15625 ' 0.15625 * 100_000
+' Thermocouple types
+    B               = %0000
+    E               = %0001
+    J               = %0010
+    K               = %0011
+    N               = %0100
+    R               = %0101
+    S               = %0110
+    T               = %0111
+    VOLTMODE_GAIN8  = %1000
+    VOLTMODE_GAIN32 = %1100
 
 VAR
 
@@ -210,6 +225,21 @@ PUB ThermoCoupleTemp
     result >>= 5
     result := umath.multdiv (result, TC_RES, 100_000)
     return
+
+PUB ThermoCoupleType(type) | tmp
+' Set type of thermocouple
+'   Valid values: B (0), E (1), J (2), K* (3), N (4), R (5), S (6), T (7)
+'   Any other value polls the chip and returns the current setting
+    readRegX (core#CR1, 1, @tmp)
+    case type
+        B, E, J, K, N, R, S, T:
+        OTHER:
+            result := tmp & core#BITS_TC_TYPE
+            return
+
+    tmp &= core#MASK_TC_TYPE
+    tmp := (tmp | type) & core#CR1_MASK
+    writeRegX(core#CR1, 1, @tmp)
 
 PRI swapByteOrder(buff_addr)
 
