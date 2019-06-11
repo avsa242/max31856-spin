@@ -86,6 +86,18 @@ PUB ColdJuncHighFault(thresh) | tmp
 
     writeRegX (core#CJHF, 1, @thresh)
 
+PUB ColdJuncLowFault(thresh) | tmp
+' Set Cold-Junction LOW fault threshold
+'   Valid values: 0..255
+'   Any other value polls the chip and returns the current setting
+    readRegX (core#CJLF, 1, @tmp)
+    case thresh
+        0..255:
+        OTHER:
+            return tmp & $FF
+
+    writeRegX (core#CJLF, 1, @thresh)
+
 PUB ColdJuncOffset(offset) | tmp  'XXX Make param units degrees
 ' Set Cold-Junction temperature sensor offset
     readRegX (core#CJTO, 1, @tmp)
