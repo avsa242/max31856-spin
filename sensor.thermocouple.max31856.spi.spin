@@ -74,16 +74,27 @@ PUB Stop
 
     spi.stop
 
+PUB ColdJuncHighFault(thresh) | tmp
+' Set Cold-Junction HIGH fault threshold
+'   Valid values: 0..255
+'   Any other value polls the chip and returns the current setting
+    readRegX (core#CJHF, 1, @tmp)
+    case thresh
+        0..255:
+        OTHER:
+            return tmp & $FF
+
+    writeRegX (core#CJHF, 1, @thresh)
+
 PUB ColdJuncOffset(offset) | tmp  'XXX Make param units degrees
 ' Set Cold-Junction temperature sensor offset
     readRegX (core#CJTO, 1, @tmp)
     case offset
-        -128..127:
-            offset := types.s8 (offset)
+        0..255:
         OTHER:
             return tmp
 
-    writeRegX (core#CJTO, 1, @tmp)
+    writeRegX (core#CJTO, 1, @offset)
 
 PUB ColdJuncSensor(enabled) | tmp
 ' Enable the on-chip Cold-Junction temperature sensor
