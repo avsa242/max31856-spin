@@ -69,9 +69,9 @@ PUB ColdJuncSensor(enabled) | tmp
     readRegX (core#CR0, 1, @tmp)
     case ||enabled
         0, 1:
-            enabled := ||enabled << core#FLD_CJ
+            enabled := (||enabled ^ 1) << core#FLD_CJ
         OTHER:
-            result := ((tmp >> core#FLD_CJ) & %1) * TRUE
+            result := (((tmp >> core#FLD_CJ) & %1) ^ 1) * TRUE
             return
 
     tmp &= core#MASK_CJ
