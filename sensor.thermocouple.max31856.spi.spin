@@ -173,7 +173,7 @@ PUB NotchFilter(Hz) | tmp, cmode_tmp
         50, 60:
             Hz := lookdownz(Hz: 60, 50)
         OTHER:
-            result := tmp & core#BITS_OCFAULT
+            result := tmp & %1
             return lookupz(tmp: 60, 50)
 
     tmp &= core#MASK_NOTCHFILT
