@@ -20,6 +20,8 @@ CON
     SDO         = 2
     SCK         = 3
 
+    LED         = cfg#LED1
+
 OBJ
 
     cfg     : "core.con.boardcfg.flip"
@@ -28,21 +30,49 @@ OBJ
     max31856: "sensor.thermocouple.max31856.spi"
     math    : "tiny.math.float"
     fs      : "string.float"
+    umath   : "umath"
 
 VAR
 
     byte _ser_cog
 
-PUB Main | i, r, tc, tc_tmp, tc_res, scl, cj, cj_tmp, cj_res
+PUB Main | i, r, tc, tc_tmp, tc_res, scl, cj, cj_tmp, cj_res, temp
 
     Setup
+    max31856.NotchFilter (60)
+
     ser.Clear
 '    f := 7 '.0078125
-    tc_res := 0.0078125
-    cj_res := 0.015625
-    scl := 1000
+'    tc_res := 0.0078125
+    tc_res := 78125 ' 0.0078125 * 10_000_000
+    cj_res := 15625 ' 0.15625 * 1_000_000
 
     max31856.ConversionMode(max31856#CMODE_AUTO)
+    fs.SetPrecision (7)
+
+    repeat
+        ser.Position (0, 0)
+        cj := max31856.ColdJuncTemp
+        cj_tmp := umath.multdiv (cj, cj_res, 1_000_000)'x, num, denom)
+        ser.Hex (cj, 8)
+        ser.NewLine
+        ser.Dec (cj_tmp)
+
+    repeat
+        ser.Position (0, 0)
+        tc := max31856.ThermoCoupleTemp
+'        ser.Hex (tc, 8)
+ '       ser.NewLine
+        ser.Dec (tc)
+
+    repeat
+        ser.Position (0, 0)
+        tc := max31856.ThermoCoupleTemp
+        tc_tmp := math.FFloat (tc)
+        temp := math.FMul (tc_tmp, tc_res)
+        ser.Hex (tc, 8)
+        ser.NewLine
+        ser.Str ( fs.FloatToString (temp))
 
     repeat
         cj := math.FFloat (max31856.ColdJuncTemp)
@@ -77,16 +107,16 @@ PUB Setup
     else
         ser.Str(string("max31856 driver failed to start - halting", ser#NL))
         max31856.Stop
-        time.MSleep (500)
+        time.MSleep (5)
         ser.Stop
-        repeat
+        Flash (LED, 500)
 
-PUB Flash(led_pin)
+PUB Flash(led_pin, delay_ms)
 
     dira[led_pin] := 1
     repeat
         !outa[led_pin]
-        time.MSleep (100)
+        time.MSleep (delay_ms)
 
 DAT
 {

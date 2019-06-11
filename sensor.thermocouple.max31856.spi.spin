@@ -18,15 +18,18 @@ CON
     FAULTMODE_COMP  = 0
     FAULTMODE_INT   = 1
 
+    TC_RES          = 78125 ' 0.0078125 * 10_000_000)
+
 VAR
 
-    byte _cs, _mosi, _miso, _sck
+    byte _CS, _MOSI, _MISO, _SCK
 
 OBJ
 
     core    : "core.con.max31856"
-    spi     : "SPI_Asm"
+    spi     : "com.spi.4w"
     types   : "system.types"
+    umath   : "umath"
 
 PUB Null
 ''This is not a top-level object
@@ -34,12 +37,12 @@ PUB Null
 PUB Start (CS_PIN, SDI_PIN, SDO_PIN, SCK_PIN): okay
 
     if okay := spi.start (core#CLK_DELAY, core#CPOL)
-        _cs := CS_PIN
-        _mosi := SDI_PIN
-        _miso := SDO_PIN
-        _sck := SCK_PIN
-        dira[_cs] := 1
-        outa[_cs] := 1
+        _CS := CS_PIN
+        _MOSI := SDI_PIN
+        _MISO := SDO_PIN
+        _SCK := SCK_PIN
+        dira[_CS] := 1
+        outa[_CS] := 1
     else
         return FALSE
 
@@ -47,15 +50,36 @@ PUB Stop
 
     spi.stop
 
+PUB ColdJuncOffset(offset) | tmp  'XXX Make param units degrees
+' Set Cold-Junction temperature sensor offset
+    readRegX (core#CJTO, 2, @tmp)
+    case offset
+        -128..127:
+            offset := types.s8 (offset)
+        OTHER:
+            return tmp
+
+    writeRegX (core#CJTO, 1, @tmp)
+
+PUB ColdJuncSensor(enabled) | tmp
+' Enable the on-chip Cold-Junction temperature sensor
+'   Valid values: TRUE (-1 or 1), FALSE
+'   Any other value polls the chip and returns the current setting
+    readRegX (core#CR0, 2, @tmp)
+    case ||enabled
+        0, 1:
+            enabled := ||enabled << core#FLD_CJ
+        OTHER:
+            result := ((tmp >> core#FLD_CJ) & %1) * TRUE
+
+    tmp &= core#MASK_CJ
+    tmp := (tmp | enabled) & core#CR0_MASK
+    writeRegX (core#CR0, 1, @tmp)
+
 PUB ColdJuncTemp
 ' Read the Cold-Junction temperature sensor
     readRegX (core#CJTH, 2, @result)
     result := (result & $FFFF) >> 2
-
-PUB ThermoCoupleTemp
-' Read the Thermocouple temperature
-    readRegX (core#LTCBH, 3, @result)
-    result := result >> 5
 
 PUB ConversionMode(mode) | tmp
 ' Enable automatic conversion mode
@@ -71,32 +95,6 @@ PUB ConversionMode(mode) | tmp
 
     tmp &= core#MASK_CMODE
     tmp := (tmp | mode) & core#CR0_MASK
-    writeRegX (core#CR0, 1, @tmp)
-
-PUB CJOffset(offset) | tmp  'XXX Make param units degrees
-' Set Cold-Junction temperature sensor offset
-    readRegX (core#CJTO, 2, @tmp)
-    case offset
-        -128..127:
-            offset := types.s8 (offset)
-        OTHER:
-            return tmp
-
-    writeRegX (core#CJTO, 1, @tmp)
-
-PUB CJSensor(enabled) | tmp
-' Enable the on-chip Cold-Junction temperature sensor
-'   Valid values: TRUE (-1 or 1), FALSE
-'   Any other value polls the chip and returns the current setting
-    readRegX (core#CR0, 2, @tmp)
-    case ||enabled
-        0, 1:
-            enabled := ||enabled << core#FLD_CJ
-        OTHER:
-            result := ((tmp >> core#FLD_CJ) & %1) * TRUE
-
-    tmp &= core#MASK_CJ
-    tmp := (tmp | enabled) & core#CR0_MASK
     writeRegX (core#CR0, 1, @tmp)
 
 PUB FaultClear | tmp
@@ -178,28 +176,42 @@ PUB OneShot | tmp
     tmp := (tmp | (1 << core#FLD_ONESHOT)) & core#CR0_MASK
     writeRegX (core#CR0, 1, @tmp)
 
-PUB writeRegX(reg, nr_bytes, buf_addr) | tmp
+PUB ThermoCoupleTemp
+' Read the Thermocouple temperature
+    readRegX (core#LTCBH, 3, @result)
+    swapByteOrder(@result)
+    result >>=5
+    result := umath.multdiv (result, TC_RES, 100_000)
+
+PRI swapByteOrder(buff_addr)
+
+    byte[buff_addr][3] := byte[buff_addr][0]
+    byte[buff_addr][0] := byte[buff_addr][2]
+    byte[buff_addr][2] := byte[buff_addr][3]
+    byte[buff_addr][3] := 0
+
+PRI writeRegX(reg, nr_bytes, buf_addr) | tmp
 ' Write reg to MOSI
     outa[_CS] := 0
     case nr_bytes
         1..4:
-            spi.SHIFTOUT (_mosi, _sck, core#MOSI_BITORDER, 8, reg | core#WRITE_REG)     'Command w/nr_bytes data bytes following
+            spi.SHIFTOUT (_MOSI, _SCK, core#MOSI_BITORDER, 8, reg | core#WRITE_REG)     'Command w/nr_bytes data bytes following
             repeat tmp from 0 to nr_bytes-1
-                spi.SHIFTOUT (_mosi, _sck, core#MOSI_BITORDER, 8, byte[buf_addr][tmp])
+                spi.SHIFTOUT (_MOSI, _SCK, core#MOSI_BITORDER, 8, byte[buf_addr][tmp])
         OTHER:
             result := FALSE
             buf_addr := 0
     outa[_CS] := 1
 
-PUB readRegX(reg, nr_bytes, buf_addr) | tmp
+PRI readRegX(reg, nr_bytes, buf_addr) | tmp
 ' Read reg from MISO
     outa[_CS] := 0
-    spi.SHIFTOUT (_mosi, _sck, core#MOSI_BITORDER, 8, reg)              'Which register to query
+    spi.SHIFTOUT (_MOSI, _SCK, core#MOSI_BITORDER, 8, reg)              'Which register to query
 
     case nr_bytes
         1..4:
             repeat tmp from 0 to nr_bytes-1
-                byte[buf_addr][tmp] := spi.SHIFTIN (_miso, _sck, core#MISO_BITORDER, 8)
+                byte[buf_addr][tmp] := spi.SHIFTIN (_MISO, _SCK, core#MISO_BITORDER, 8)
         OTHER:
             result := FALSE
             buf_addr := 0
