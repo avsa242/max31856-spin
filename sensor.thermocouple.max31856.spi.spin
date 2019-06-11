@@ -53,7 +53,7 @@ PUB Stop
 
 PUB ColdJuncOffset(offset) | tmp  'XXX Make param units degrees
 ' Set Cold-Junction temperature sensor offset
-    readRegX (core#CJTO, 2, @tmp)
+    readRegX (core#CJTO, 1, @tmp)
     case offset
         -128..127:
             offset := types.s8 (offset)
@@ -66,7 +66,7 @@ PUB ColdJuncSensor(enabled) | tmp
 ' Enable the on-chip Cold-Junction temperature sensor
 '   Valid values: TRUE (-1 or 1), FALSE
 '   Any other value polls the chip and returns the current setting
-    readRegX (core#CR0, 2, @tmp)
+    readRegX (core#CR0, 1, @tmp)
     case ||enabled
         0, 1:
             enabled := ||enabled << core#FLD_CJ

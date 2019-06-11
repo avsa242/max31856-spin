@@ -40,6 +40,13 @@ CON
         MASK_NOTCHFILT  = CR0_MASK ^ (1 << FLD_NOTCHFILT)
 
     CR1                 = $01
+    CR1_MASK            = $7F
+        FLD_AVGSEL      = 4
+        FLD_TC_TYPE     = 0
+        BITS_AVGSEL     = %111
+        BITS_TC_TYPE    = %1111
+        MASK_AVGSEL     = CR1_MASK ^ (BITS_AVGSEL << FLD_AVGSEL)
+        MASK_TC_TYPE    = CR1_MASK ^ (BITS_TC_TYPE << FLD_TC_TYPE)
 
     MASK                = $02
 
