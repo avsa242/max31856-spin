@@ -183,6 +183,21 @@ PUB NotchFilter(Hz) | tmp, cmode_tmp
     if cmode_tmp
         ConversionMode (CMODE_AUTO)
 
+PUB ThermoCoupleAvg(samples) | tmp
+' Set number of samples averaged during thermocouple conversion
+'   Valid values: 1*, 2, 4, 8, 16
+'   Any other value polls the chip and returns the current setting
+    readRegX (core#CR1, 1, @tmp)
+    case samples
+        1, 2, 4, 8, 16:
+            samples := lookdownz(samples: 1, 2, 4, 8, 16) << core#FLD_AVGSEL
+        OTHER:
+            result := (tmp >> core#FLD_AVGSEL) & core#BITS_AVGSEL
+            return lookupz(result: 1, 2, 4, 8, 16)
+    tmp &= core#MASK_AVGSEL
+    tmp := (tmp | samples) & core#CR1_MASK
+    writeRegX(core#CR1, 1, @tmp)
+
 PUB ThermoCoupleTemp
 ' Read the Thermocouple temperature
     readRegX (core#LTCBH, 3, @result)
