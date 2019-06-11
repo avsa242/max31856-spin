@@ -19,6 +19,7 @@ CON
     FAULTMODE_INT   = 1
 
     TC_RES          = 78125 ' 0.0078125 * 10_000_000)
+    CJ_RES          = 15625 ' 0.15625 * 100_000
 
 VAR
 
@@ -79,11 +80,12 @@ PUB ColdJuncSensor(enabled) | tmp
 PUB ColdJuncTemp
 ' Read the Cold-Junction temperature sensor
     readRegX (core#CJTH, 2, @result)
-'    result := (result & $FFFF) >> 2
     result.byte[2] := result.byte[0]
     result.byte[0] := result.byte[1]
     result.byte[1] := result.byte[2]
     result.byte[2] := 0
+    result >>=2
+    return umath.multdiv (result, CJ_RES, 10_000)
 
 PUB ConversionMode(mode) | tmp
 ' Enable automatic conversion mode

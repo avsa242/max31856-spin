@@ -22,6 +22,11 @@ CON
 
     LED         = cfg#LED1
 
+' Temperature scale readings
+    C           = 0
+    F           = 1
+    SCALE       = F
+
 OBJ
 
     cfg     : "core.con.boardcfg.flip"
@@ -30,72 +35,46 @@ OBJ
     max31856: "sensor.thermocouple.max31856.spi"
     math    : "tiny.math.float"
     fs      : "string.float"
-    umath   : "umath"
 
 VAR
 
     byte _ser_cog
 
-PUB Main | i, r, tc, tc_tmp, tc_res, scl, cj, cj_tmp, cj_res, temp
+PUB Main | cj_temp, tc_temp
 
     Setup
+
     max31856.NotchFilter (60)
-
-    ser.Clear
-'    f := 7 '.0078125
-'    tc_res := 0.0078125
-    tc_res := 78125 ' 0.0078125 * 10_000_000
-    cj_res := 15625 ' 0.15625 * 1_000_000
-
     max31856.ConversionMode(max31856#CMODE_AUTO)
-    fs.SetPrecision (7)
 
     repeat
-        ser.Position (0, 0)
-        cj := max31856.ColdJuncTemp
-        cj_tmp := umath.multdiv (cj, cj_res, 1_000_000)'x, num, denom)
-        ser.Hex (cj, 8)
-        ser.NewLine
-        ser.Dec (cj_tmp)
+        cj_temp := math.FFloat (max31856.ColdJuncTemp)
+        tc_temp := math.FFloat (max31856.ThermoCoupleTemp)
+        cj_temp := math.FDiv (cj_temp, 100.0)
+        tc_temp := math.FDiv (tc_temp, 100.0)
 
-    repeat
-        ser.Position (0, 0)
-        tc := max31856.ThermoCoupleTemp
-'        ser.Hex (tc, 8)
- '       ser.NewLine
-        ser.Dec (tc)
+        ser.Position (0, 3)
+        case SCALE
+            F:
+                ser.Str (string("Cold junction temp: "))
+                ser.Str (fs.FloatToString(CtoF(cj_temp)))
+                ser.NewLine
 
-    repeat
-        ser.Position (0, 0)
-        tc := max31856.ThermoCoupleTemp
-        tc_tmp := math.FFloat (tc)
-        temp := math.FMul (tc_tmp, tc_res)
-        ser.Hex (tc, 8)
-        ser.NewLine
-        ser.Str ( fs.FloatToString (temp))
+                ser.Str (string("Thermocouple temp: "))
+                ser.Str (fs.FloatToString(CtoF(tc_temp)))
 
-    repeat
-        cj := math.FFloat (max31856.ColdJuncTemp)
-        cj_tmp := ctof(math.FMul (cj, cj_res))
- '       cj_tmp := math.FMul (cj, cj_res)
-        ser.Position (0, 0)
-        ser.Str (string("Cold junction temp: "))
-        ser.Str (fs.FloatToString (cj_tmp))
+            OTHER:
+                ser.Str (string("Cold junction temp: "))
+                ser.Str (fs.FloatToString(cj_temp))
+                ser.NewLine
 
+                ser.Str (string("Thermocouple temp: "))
+                ser.Str (fs.FloatToString(tc_temp))
 
-        tc := math.FFloat (max31856.ThermoCoupleTemp)
-        tc_tmp := ctof(math.FMul (tc, tc_res))
-'        tc_tmp := math.FMul (tc, tc_res)
-        ser.Position (0, 2)
-        ser.Str (string("Thermocouple temp: "))
-        ser.Str (fs.FloatToString (tc_tmp))
-
-        time.MSleep (250)
-
-PUB CtoF (c): f
+PUB CtoF (deg_c): deg_f
 'T(°F) = T(°C) × 9/5 + 32
 ' 9/5 = 1800 + 32
-    f := math.FAdd (math.FMul (c, 1.8), 32.0)
+    deg_f := math.FAdd (math.FMul (deg_c, 1.8), 32.0)
 
 PUB Setup
 
