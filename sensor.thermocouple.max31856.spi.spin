@@ -72,6 +72,7 @@ PUB ColdJuncSensor(enabled) | tmp
             enabled := ||enabled << core#FLD_CJ
         OTHER:
             result := ((tmp >> core#FLD_CJ) & %1) * TRUE
+            return
 
     tmp &= core#MASK_CJ
     tmp := (tmp | enabled) & core#CR0_MASK
