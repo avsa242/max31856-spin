@@ -5,7 +5,7 @@
     Description: Driver object for Maxim's MAX31856 thermocouple amplifier (4W SPI)
     Copyright (c) 2018
     Created: Sep 30, 2018
-    Updated: Mar 16, 2019
+    Updated: Jun 11, 2019
     See end of file for terms of use.
     --------------------------------------------
 }

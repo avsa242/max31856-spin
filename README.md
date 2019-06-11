@@ -11,6 +11,9 @@ This is a P8X32A/Propeller driver object for Maxim's MAX31856 SPI Thermocouple a
 * Supports automatic or one-shot conversion modes
 * Supports built-in cold-junction offset compensation
 * Supports 50/60Hz mains power frequency noise rejection
+* Supports setting temperature fault thresholds
+* Supports setting/checking for all fault types supported by the sensor
+* Supports setting thermocouple type
 
 ## Requirements
 
@@ -24,6 +27,6 @@ This is a P8X32A/Propeller driver object for Maxim's MAX31856 SPI Thermocouple a
 
 ## TODO
 
-* Modify ColdJuncOffset to take degrees as a parameter, rather than s8
-* Implement remaining functionality described in datasheet
-* Implement demo and test objects
+- [ ] Modify ColdJuncOffset to take degrees as a parameter, rather than s8
+- [x] Implement remaining functionality described in datasheet (*implemented, but some methods' parameters are currently raw values not calculated to any scale*)
+- [x] Implement demo and test objects

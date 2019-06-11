@@ -5,7 +5,7 @@
     Author: Jesse Burt
     Copyright (c) 2019
     Created Sep 30, 2018
-    Updated Mar 16, 2019
+    Updated Jun 11, 2019
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -58,18 +58,23 @@ PUB Main | cj_temp, tc_temp
             F:
                 ser.Str (string("Cold junction temp: "))
                 ser.Str (fs.FloatToString(CtoF(cj_temp)))
+                ser.Char (ser#CE)
                 ser.NewLine
 
                 ser.Str (string("Thermocouple temp: "))
                 ser.Str (fs.FloatToString(CtoF(tc_temp)))
+                ser.Char (ser#CE)
 
             OTHER:
                 ser.Str (string("Cold junction temp: "))
                 ser.Str (fs.FloatToString(cj_temp))
+                ser.Char (ser#CE)
                 ser.NewLine
 
                 ser.Str (string("Thermocouple temp: "))
                 ser.Str (fs.FloatToString(tc_temp))
+                ser.Char (ser#CE)
+        time.MSleep (100)
 
 PUB CtoF (deg_c): deg_f
 'T(°F) = T(°C) × 9/5 + 32
@@ -89,6 +94,7 @@ PUB Setup
         time.MSleep (5)
         ser.Stop
         Flash (LED, 500)
+    fs.SetPrecision (6)
 
 PUB Flash(led_pin, delay_ms)
 
