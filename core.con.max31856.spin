@@ -49,6 +49,19 @@ CON
         MASK_TC_TYPE    = CR1_MASK ^ (BITS_TC_TYPE << FLD_TC_TYPE)
 
     MASK                = $02
+    MASK_MASK           = $3F
+        FLD_CJ_HIGH     = 5
+        FLD_CJ_LOW      = 4
+        FLD_TC_HIGH     = 3
+        FLD_TC_LOW      = 2
+        FLD_OV_UV       = 1
+        FLD_OPEN        = 0
+        MASK_CJ_HIGH    = MASK_MASK ^ (1 << FLD_CJ_HIGH)
+        MASK_CJ_LOW     = MASK_MASK ^ (1 << FLD_CJ_LOW)
+        MASK_TC_HIGH    = MASK_MASK ^ (1 << FLD_TC_HIGH)
+        MASK_TC_LOW     = MASK_MASK ^ (1 << FLD_TC_LOW)
+        MASK_OV_UV      = MASK_MASK ^ (1 << FLD_OV_UV)
+        MASK_OPEN       = MASK_MASK ^ (1 << FLD_OPEN)
 
     CJHF                = $03
 

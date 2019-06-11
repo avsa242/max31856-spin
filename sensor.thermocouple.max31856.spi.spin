@@ -36,6 +36,14 @@ CON
     VOLTMODE_GAIN8  = %1000
     VOLTMODE_GAIN32 = %1100
 
+' Fault mask bits (OR together any combination for use with FaultMask)
+    FAULT_CJ_HIGH   = 1 << core#FLD_CJ_HIGH
+    FAULT_CJ_LOW    = 1 << core#FLD_CJ_LOW
+    FAULT_TC_HIGH   = 1 << core#FLD_TC_HIGH
+    FAULT_TC_LOW    = 1 << core#FLD_TC_LOW
+    FAULT_OV_UV     = 1 << core#FLD_OV_UV
+    FAULT_OPEN      = 1 << core#FLD_OPEN
+
 VAR
 
     byte _CS, _MOSI, _MISO, _SCK
@@ -127,6 +135,30 @@ PUB FaultClear | tmp
     tmp &= core#MASK_FAULTCLR
     tmp := (tmp | (1 << core#FLD_FAULTCLR)) & core#CR0_MASK
     writeRegX (core#CR0, 1, @tmp)
+
+PUB FaultMask(mask) | tmp
+' Set fault output mask
+'   Valid values: (for each individual bit)
+'       0: /FAULT output asserted
+'      *1: /FAULT output masked
+'   Bit: 5    0
+'       %000000
+'       Bit 5   Cold-junction HIGH fault threshold
+'           4   Cold-junction LOW fault threshold
+'           3   Thermocouple temperature HIGH fault threshold
+'           2   Thermocouple temperature LOW fault threshold
+'           1   Over-voltage or Under-voltage input
+'           0   Thermocouple open-circuit
+'   Example: %111101 would assert the /FAULT pin when an over-voltage or under-voltage condition is detected
+'   Any other value polls the chip and returns the current setting
+    readRegX (core#MASK, 1, @tmp)
+    case mask
+        %000000..%111111:
+        OTHER:
+            return tmp & core#MASK_MASK
+
+    tmp := mask & core#MASK_MASK
+    writeRegX (core#MASK, 1, @tmp)
 
 PUB FaultMode(mode) | tmp
 ' Defines behavior of fault flag
