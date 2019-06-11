@@ -146,6 +146,18 @@ PUB FaultTestTime(time_ms) | tmp 'XXX Note recommendations based on circuit desi
     tmp := (tmp | time_ms) & core#CR0_MASK
     writeRegX (core#CR0, 1, @tmp)
 
+PUB Measure | tmp
+' Perform single cold-junction and thermocouple conversion
+' NOTE: Single conversion is performed only if ConversionMode is set to CMODE_OFF (Normally Off)
+' Approximate conversion times:
+'   Filter Setting      Time
+'   60Hz                143ms
+'   50Hz                169ms
+    readRegX (core#CR0, 1, @tmp)
+    tmp &= core#MASK_ONESHOT
+    tmp := (tmp | (1 << core#FLD_ONESHOT)) & core#CR0_MASK
+    writeRegX (core#CR0, 1, @tmp)
+
 PUB NotchFilter(Hz) | tmp, cmode_tmp
 ' Select noise rejection filter frequency, in Hz
 '   Valid values: 50, 60*
@@ -169,18 +181,6 @@ PUB NotchFilter(Hz) | tmp, cmode_tmp
 
     if cmode_tmp
         ConversionMode (CMODE_AUTO)
-
-PUB OneShot | tmp
-' Perform single cold-junction and thermocouple conversion
-' NOTE: Single conversion is performed only if ConversionMode is set to CMODE_OFF (Normally Off)
-' Approximate conversion times:
-'   Filter Setting      Time
-'   60Hz                143ms
-'   50Hz                169ms
-    readRegX (core#CR0, 1, @tmp)
-    tmp &= core#MASK_ONESHOT
-    tmp := (tmp | (1 << core#FLD_ONESHOT)) & core#CR0_MASK
-    writeRegX (core#CR0, 1, @tmp)
 
 PUB ThermoCoupleTemp
 ' Read the Thermocouple temperature

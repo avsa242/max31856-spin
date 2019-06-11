@@ -5,8 +5,9 @@ This is a P8X32A/Propeller driver object for Maxim's MAX31856 SPI Thermocouple a
 
 ## Salient Features
 
-* 4-wire SPI connection at up to 1MHz
+* 4-wire SPI connection at up to 1MHz (device supports 5MHz)
 * Reads on-chip cold-junction temperature sensor
+* Reads thermocouple
 * Supports automatic or one-shot conversion modes
 * Supports built-in cold-junction offset compensation
 * Supports 50/60Hz mains power frequency noise rejection
@@ -19,8 +20,10 @@ This is a P8X32A/Propeller driver object for Maxim's MAX31856 SPI Thermocouple a
 
 * The chip has no known identification register, so the driver will start successfully as long as the SPI driver does
 * Driver is early in development and may malfunction or outright fail to build
+* Driver currently returns temperature data as hundredths of a degree
 
 ## TODO
 
+* Modify ColdJuncOffset to take degrees as a parameter, rather than s8
 * Implement remaining functionality described in datasheet
 * Implement demo and test objects
