@@ -98,7 +98,8 @@ PUB ConversionMode(mode) | tmp
         CMODE_OFF, CMODE_AUTO:
             mode := (mode << core#FLD_CMODE)
         OTHER:
-            return result := (tmp >> core#FLD_CMODE) & %1
+            result := (tmp >> core#FLD_CMODE) & %1
+            return
 
     tmp &= core#MASK_CMODE
     tmp := (tmp | mode) & core#CR0_MASK
@@ -126,7 +127,8 @@ PUB FaultMode(mode) | tmp
         FAULTMODE_COMP, FAULTMODE_INT:
             mode := mode << core#FLD_FAULT
         OTHER:
-            return result := ((tmp >> core#FLD_FAULT) & 1)
+            result := ((tmp >> core#FLD_FAULT) & 1)
+            return
 
     tmp &= core#MASK_FAULT
     tmp := (tmp | mode) & core#CR0_MASK
@@ -141,7 +143,8 @@ PUB FaultTestTime(time_ms) | tmp 'XXX Note recommendations based on circuit desi
         0, 10, 32, 100:
             time_ms := lookdownz(time_ms: 0, 10, 32, 100) << core#FLD_OCFAULT
         OTHER:
-            return result := ((tmp >> core#FLD_OCFAULT) & core#BITS_OCFAULT)
+            result := ((tmp >> core#FLD_OCFAULT) & core#BITS_OCFAULT)
+            return lookupz(result: 0, 10, 32, 100)
 
     tmp &= core#MASK_OCFAULT
     tmp := (tmp | time_ms) & core#CR0_MASK
@@ -195,6 +198,7 @@ PUB ThermoCoupleAvg(samples) | tmp
         OTHER:
             result := (tmp >> core#FLD_AVGSEL) & core#BITS_AVGSEL
             return lookupz(result: 1, 2, 4, 8, 16)
+
     tmp &= core#MASK_AVGSEL
     tmp := (tmp | samples) & core#CR1_MASK
     writeRegX(core#CR1, 1, @tmp)
@@ -205,6 +209,7 @@ PUB ThermoCoupleTemp
     swapByteOrder(@result)
     result >>= 5
     result := umath.multdiv (result, TC_RES, 100_000)
+    return
 
 PRI swapByteOrder(buff_addr)
 
