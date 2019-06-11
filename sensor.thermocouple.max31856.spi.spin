@@ -204,6 +204,22 @@ PUB FaultMode(mode) | tmp
     tmp := (tmp | mode) & core#CR0_MASK
     writeRegX (core#CR0, 1, @tmp)
 
+PUB FaultStatus
+' Return fault status, as bitfield
+'   Returns: (for each individual bit)
+'       0: No fault detected
+'       1: Fault detected
+'
+'   Bit 7   Cold-junction out of range
+'       6   Thermcouple out of range
+'       5   Cold-junction HIGH
+'       4   Cold-junction LOW
+'       3   Thermocouple temperature HIGH temperature
+'       2   Thermocouple temperature LOW temperature
+'       1   Over-voltage or Under-voltage
+'       0   Thermocouple open-circuit
+    readRegX(core#SR, 1, @result)
+
 PUB FaultTestTime(time_ms) | tmp 'XXX Note recommendations based on circuit design
 ' Sets open-circuit fault detection test time, in ms
 '   Valid values: 0 (disable fault detection), 10, 32, 100
