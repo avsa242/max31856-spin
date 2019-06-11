@@ -210,12 +210,12 @@ PUB FaultStatus
 '       0: No fault detected
 '       1: Fault detected
 '
-'   Bit 7   Cold-junction out of range
-'       6   Thermcouple out of range
-'       5   Cold-junction HIGH
-'       4   Cold-junction LOW
-'       3   Thermocouple temperature HIGH temperature
-'       2   Thermocouple temperature LOW temperature
+'   Bit 7   Cold-junction out of normal operating range
+'       6   Thermcouple out of normal operating range
+'       5   Cold-junction above HIGH temperature threshold
+'       4   Cold-junction below LOW temperature threshold
+'       3   Thermocouple temperature above HIGH temperature threshold
+'       2   Thermocouple temperature below LOW temperature threshold
 '       1   Over-voltage or Under-voltage
 '       0   Thermocouple open-circuit
     readRegX(core#SR, 1, @result)
