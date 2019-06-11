@@ -79,7 +79,11 @@ PUB ColdJuncSensor(enabled) | tmp
 PUB ColdJuncTemp
 ' Read the Cold-Junction temperature sensor
     readRegX (core#CJTH, 2, @result)
-    result := (result & $FFFF) >> 2
+'    result := (result & $FFFF) >> 2
+    result.byte[2] := result.byte[0]
+    result.byte[0] := result.byte[1]
+    result.byte[1] := result.byte[2]
+    result.byte[2] := 0
 
 PUB ConversionMode(mode) | tmp
 ' Enable automatic conversion mode
@@ -180,7 +184,7 @@ PUB ThermoCoupleTemp
 ' Read the Thermocouple temperature
     readRegX (core#LTCBH, 3, @result)
     swapByteOrder(@result)
-    result >>=5
+    result >>= 5
     result := umath.multdiv (result, TC_RES, 100_000)
 
 PRI swapByteOrder(buff_addr)
