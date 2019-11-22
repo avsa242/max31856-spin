@@ -74,7 +74,7 @@ PUB Stop
 
 '
 
-PUB ColdJuncHighFault(thresh=-2) | tmp
+PUB ColdJuncHighThresh(thresh=-2) | tmp
 ' Set Cold-Junction HIGH fault threshold
 '   Valid values: 0..255
 '   Any other value polls the chip and returns the current setting
@@ -86,7 +86,7 @@ PUB ColdJuncHighFault(thresh=-2) | tmp
 
     writeReg (core#CJHF, 1, @thresh)
 
-PUB ColdJuncLowFault(thresh=-2) | tmp
+PUB ColdJuncLowThresh(thresh=-2) | tmp
 ' Set Cold-Junction LOW fault threshold
 '   Valid values: 0..255
 '   Any other value polls the chip and returns the current setting

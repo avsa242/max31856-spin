@@ -1,11 +1,11 @@
 {
     --------------------------------------------
-    Filename: MAX31856-Demo.spin
-    Description: Demo for the MAX31856 driver
+    Filename: MAX31856-Demo.spin2
+    Description: Demo for the MAX31856 driver (P2 version)
     Author: Jesse Burt
     Copyright (c) 2019
-    Created Sep 30, 2018
-    Updated Jun 11, 2019
+    Created Nov 21, 2019
+    Updated Nov 21, 2019
     See end of file for terms of use.
     --------------------------------------------
 }
