@@ -58,12 +58,12 @@ PUB Main | cj_temp, tc_temp
 
     Setup
 
-    max31856.NotchFilter (60)
+    max31856.NotchFilterFreq (60)
     max31856.ConversionMode(max31856#CMODE_AUTO)
 
     repeat
         cj_temp := max31856.ColdJuncTemp
-        tc_temp := max31856.ThermoCoupleTemp
+        tc_temp := max31856.ThermocoupleTemp
 
         ser.Position (0, 3)
         case SCALE
