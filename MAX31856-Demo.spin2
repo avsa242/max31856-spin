@@ -69,19 +69,19 @@ PUB Main | cj_temp, tc_temp
         case SCALE
             F:
                 ser.PrintF("Cold junction temp: ")
-                Frac(CtoF(cj_temp))
+                Frac(CtoF(cj_temp), 100)
                 ser.NewLine
 
                 ser.PrintF("Thermocouple temp: ")
-                Frac(CtoF(tc_temp))
+                Frac(CtoF(tc_temp), 100)
 
             OTHER:
                 ser.PrintF("Cold junction temp: ")
-                Frac(cj_temp)
+                Frac(cj_temp, 100)
                 ser.NewLine
 
                 ser.PrintF("Thermocouple temp: ")
-                Frac(tc_temp)
+                Frac(tc_temp, 100)
         time.MSleep (100)
 
 PUB CtoF (deg_c): deg_f
@@ -91,10 +91,17 @@ PUB CtoF (deg_c): deg_f
 '    deg_f := 32 + (deg_c * 180)
     deg_f := deg_c * 9 / 5 + 32_00
 
-PUB Frac(hundredths) | whole, part
+PUB Frac(scaled, divisor) | whole, part, places, tmp
+' Display a scaled up number in its natural form - scale it back down by divisor
+    whole := scaled / divisor
+    tmp := divisor
+    places := 0
 
-    whole := hundredths / 100
-    part := int.DecZeroed(hundredths // 100, 2)
+    repeat
+        tmp /= 10
+        places++
+    until tmp == 1
+    part := int.DecZeroed(scaled // divisor, places)
     ser.printf("%d.%s ", whole, part)
 
 PUB Setup

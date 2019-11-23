@@ -13,8 +13,9 @@
 CON
 
 ' Sensor resolution (deg C per LSB, scaled up)
-    TC_RES          = 78125 ' 0.0078125 * 10_000_000)
-    CJ_RES          = 15625 ' 0.15625 * 100_000
+    TC_RES          = 0_0078125 ' 0.0078125 * 10_000_000
+    CJ_RES          = 0_15625   ' 0.15625 * 100_000
+    CJTO_RES        = 0_0625    ' 0.0625 * 10_000
 
 ' Conversion modes
     CMODE_OFF       = 0
