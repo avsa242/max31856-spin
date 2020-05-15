@@ -3,9 +3,9 @@
     Filename: MAX31856-Demo.spin2
     Description: Demo for the MAX31856 driver (P2 version)
     Author: Jesse Burt
-    Copyright (c) 2019
+    Copyright (c) 2020
     Created Nov 21, 2019
-    Updated Nov 21, 2019
+    Updated May 15, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -69,19 +69,19 @@ PUB Main | cj_temp, tc_temp
         case SCALE
             F:
                 ser.PrintF("Cold junction temp: ")
-                Frac(CtoF(cj_temp), 100)
+                Fractional(CtoF(cj_temp), 100)
                 ser.NewLine
 
                 ser.PrintF("Thermocouple temp: ")
-                Frac(CtoF(tc_temp), 100)
+                Fractional(CtoF(tc_temp), 100)
 
             OTHER:
                 ser.PrintF("Cold junction temp: ")
-                Frac(cj_temp, 100)
+                Fractional(cj_temp, 100)
                 ser.NewLine
 
                 ser.PrintF("Thermocouple temp: ")
-                Frac(tc_temp, 100)
+                Fractional(tc_temp, 100)
         time.MSleep (100)
 
 PUB CtoF (deg_c): deg_f
@@ -91,7 +91,7 @@ PUB CtoF (deg_c): deg_f
 '    deg_f := 32 + (deg_c * 180)
     deg_f := deg_c * 9 / 5 + 32_00
 
-PUB Frac(scaled, divisor) | whole, part, places, tmp
+PUB Fractional(scaled, divisor) | whole, part, places, tmp
 ' Display a scaled up number in its natural form - scale it back down by divisor
     whole := scaled / divisor
     tmp := divisor
@@ -106,7 +106,7 @@ PUB Frac(scaled, divisor) | whole, part, places, tmp
 
 PUB Setup
 
-    clkset(ENAFREQ, CLOCKFREQ, XSEL)
+    clkset(ENAFREQ, CLOCKFREQ)
     repeat until _ser_cog := ser.StartRXTX (SER_RX, SER_TX, 0, SER_BAUD)
     ser.Clear
     ser.PrintF("Serial terminal started\n")

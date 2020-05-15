@@ -3,9 +3,9 @@
     Filename: sensor.thermocouple.max31856.spi.spin2
     Author: Jesse Burt
     Description: Driver object for Maxim's MAX31856 thermocouple amplifier (P2 version)
-    Copyright (c) 2019
+    Copyright (c) 2020
     Created: Nov 21, 2019
-    Updated: Nov 21, 2019
+    Updated: May 15, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -114,9 +114,9 @@ PUB ColdJuncSensorEnabled(enabled=-2) | tmp
 '   Valid values: TRUE (-1 or 1), FALSE
 '   Any other value polls the chip and returns the current setting
     readReg (core#CR0, 1, @tmp)
-    case ||enabled
+    case abs(enabled)
         0, 1:
-            enabled := (||enabled ^ 1) << core#FLD_CJ
+            enabled := (abs(enabled) ^ 1) << core#FLD_CJ
         OTHER:
             result := (((tmp >> core#FLD_CJ) & %1) ^ 1) * TRUE
             return
@@ -350,12 +350,12 @@ PRI swapByteOrder(buff_addr)
     byte[buff_addr][2] := byte[buff_addr][3]
     byte[buff_addr][3] := 0
 
-PRI writeReg(reg, nr_bytes, buff_addr) | tmp
-' Write reg to MOSI
+PRI writeReg(reg_nr, nr_bytes, buff_addr) | tmp
+' Write reg_nr to MOSI
     io.Low(_CS)
     case nr_bytes
         1..4:
-            spi.Write (_MOSI, _SCK, core#MOSI_BITORDER, 8, reg | core#WRITE_REG)     'Command w/nr_bytes data bytes following
+            spi.Write (_MOSI, _SCK, core#MOSI_BITORDER, 8, reg_nr | core#WRITE_REG)     'Command w/nr_bytes data bytes following
             repeat tmp from 0 to nr_bytes-1
                 spi.Write (_MOSI, _SCK, core#MOSI_BITORDER, 8, byte[buff_addr][tmp])
         OTHER:
@@ -363,10 +363,10 @@ PRI writeReg(reg, nr_bytes, buff_addr) | tmp
             buff_addr := 0
     io.High(_CS)
 
-PRI readReg(reg, nr_bytes, buff_addr) | tmp
-' Read reg from MISO
+PRI readReg(reg_nr, nr_bytes, buff_addr) | tmp
+' Read reg_nr from MISO
     io.Low(_CS)
-    spi.Write (_MOSI, _SCK, core#MOSI_BITORDER, 8, reg)              'Which register to query
+    spi.Write (_MOSI, _SCK, core#MOSI_BITORDER, 8, reg_nr)              'Which register to query
 
     case nr_bytes
         1..4:

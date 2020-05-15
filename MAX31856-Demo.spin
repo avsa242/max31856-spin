@@ -30,7 +30,7 @@ CON
 OBJ
 
     cfg     : "core.con.boardcfg.flip"
-    ser     : "com.serial.terminal"
+    ser     : "com.serial.terminal.ansi"
     time    : "time"
     max31856: "sensor.thermocouple.max31856.spi"
     math    : "tiny.math.float"
@@ -84,12 +84,13 @@ PUB CtoF (deg_c): deg_f
 PUB Setup
 
     repeat until _ser_cog := ser.Start (115_200)
+    time.MSleep(30)
     ser.Clear
-    ser.Str(string("Serial terminal started", ser#NL))
+    ser.Str(string("Serial terminal started", ser#CR, ser#LF))
     if max31856.start (CS, SDI, SDO, SCK)
-        ser.Str(string("max31856 driver started", ser#NL))
+        ser.Str(string("max31856 driver started", ser#CR, ser#LF))
     else
-        ser.Str(string("max31856 driver failed to start - halting", ser#NL))
+        ser.Str(string("max31856 driver failed to start - halting", ser#CR, ser#LF))
         max31856.Stop
         time.MSleep (5)
         ser.Stop
