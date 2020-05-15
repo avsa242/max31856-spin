@@ -294,7 +294,7 @@ PUB ThermocoupleSamples(samples=-2) | tmp
     tmp := (tmp | samples) & core#CR1_MASK
     writeReg(core#CR1, 1, @tmp)
 
-PUB ThermocoupleHighFault(thresh=-2) | tmp
+PUB ThermocoupleHighThresh(thresh=-2) | tmp
 ' Set Thermocouple HIGH fault threshold
 '   Valid values: 0..32767
 '   Any other value polls the chip and returns the current setting
@@ -306,7 +306,7 @@ PUB ThermocoupleHighFault(thresh=-2) | tmp
 
     writeReg (core#LTHFTH, 2, @thresh)
 
-PUB ThermocoupleLowFault(thresh=-2) | tmp
+PUB ThermocoupleLowThresh(thresh=-2) | tmp
 ' Set Thermocouple LOW fault threshold
 '   Valid values: 0..32767
 '   Any other value polls the chip and returns the current setting
