@@ -13,7 +13,8 @@
 CON
 
 ' Sensor resolution (deg C per LSB, scaled up)
-    TC_RES          = 0_0078125                 ' 0.0078125 * 10_000_000
+'    TC_RES          = 0_0078125                 ' 0.0078125 * 10_000_000
+    TC_RES          = 0_00781                   ' 0.00781 * 100_000
     CJ_RES          = 0_15625                   ' 0.15625 * 100_000
 
 ' Operating modes
@@ -44,15 +45,19 @@ CON
     OV_UV           = 1 << core#OV_UV
     OPEN            = 1 << core#OPEN
 
+' Temperature scales
+    C               = 0
+    F               = 1
+
 VAR
 
     long _CS, _SCK, _MOSI, _MISO
+    byte _temp_scale
 
 OBJ
 
     core    : "core.con.max31856"
     spi     : "com.spi.4w"
-    umath   : "math.unsigned64"
 
 PUB Null{}
 ' This is not a top-level object
@@ -120,8 +125,12 @@ PUB ColdJuncBias(offset): curr_offs 'XXX Make param units degrees
 PUB ColdJuncTemp{}: cjtemp
 ' Current cold-junction temperature
     readreg(core#CJTH, 2, @cjtemp)
-    cjtemp ~>= 2                                ' shift right but keep
-    return umath.multdiv(cjtemp, CJ_RES, 10_000)'   the sign
+    cjtemp ~>= 2                                ' shift right but keep sign bit
+    cjtemp := (cjtemp * CJ_RES) / 10_000
+    case _temp_scale
+        C:
+        F:
+            cjtemp := ((cjtemp * 90) / 50) + 32_00
 
 PUB IntClear{} | tmp
 ' Clear fault status
@@ -235,7 +244,7 @@ PUB NotchFilter(freq): curr_freq | opmode_orig
 
     opmode(opmode_orig)                         ' restore user's OpMode
 
-PUB OCFaultTestTime(time_ms) | curr_time 'XXX Note recommendations based on circuit design
+PUB OCFaultTestTime(time_ms): curr_time 'XXX Note recommendations based on circuit design
 ' Sets open-circuit fault detection test time, in ms
 '   Valid values: 0 (disable fault detection), 10, 32, 100
 '   Any other value polls the chip and returns the current setting
@@ -289,6 +298,18 @@ PUB TCIntLowThresh(thresh): curr_thr
             readreg(core#LTLFTH, 2, @curr_thr)
             return ~~curr_thr
 
+PUB TempScale(scale): curr_scl
+' Set temperature scale used by Temperature method
+'   Valid values:
+'      *C (0): Celsius
+'       F (1): Fahrenheit
+'   Any other value returns the current setting
+    case scale
+        C, F:
+            _temp_scale := scale
+        other:
+            return _temp_scale
+
 PUB ThermoCoupleAvg(samples): curr_smp
 ' Set number of samples averaged during thermocouple conversion
 '   Valid values: *1, 2, 4, 8, 16
@@ -304,12 +325,16 @@ PUB ThermoCoupleAvg(samples): curr_smp
     samples := ((curr_smp & core#AVGSEL_MASK) | samples) & core#CR1_MASK
     writereg(core#CR1, 1, @samples)
 
-PUB ThermoCoupleTemp{}: temp
+PUB ThermocoupleTemp{}: temp | sign
 ' Read the Thermocouple temperature
+    temp := 0
     readreg(core#LTCBH, 3, @temp)
     temp ~>= 5                                  ' shift right, but keep
-    return umath.multdiv(temp, TC_RES, 100_000) '   the sign
-    'xxx the above won't work for negative temps (unsigned math64 object)
+    temp := (temp * TC_RES) / 1000              ' sign bit
+    case _temp_scale
+        C:
+        F:
+            temp := ((temp * 90) / 50) + 32_00
 
 PUB ThermoCoupleType(type): curr_type
 ' Set type of thermocouple
