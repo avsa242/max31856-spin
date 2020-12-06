@@ -16,9 +16,9 @@ CON
     TC_RES          = 78125 ' 0.0078125 * 10_000_000)
     CJ_RES          = 15625 ' 0.15625 * 100_000
 
-' Conversion modes
-    CMODE_OFF       = 0
-    CMODE_AUTO      = 1
+' Operating modes
+    SINGLE          = 0
+    CONT            = 1
 
 ' Fault modes
     FAULTMODE_COMP  = 0
@@ -125,21 +125,6 @@ PUB ColdJuncTemp{}: cjtemp
     cjtemp ~>= 2                                ' shift right but keep
     return umath.multdiv(cjtemp, CJ_RES, 10_000)'   the sign
 
-PUB ConversionMode(mode) | curr_mode
-' Enable automatic conversion mode
-'   Valid values: CMODE_OFF (0): Normally Off (default), CMODE_AUTO (1): Automatic Conversion Mode
-'   Any other value polls the chip and returns the current setting
-'   NOTE: In Automatic mode, conversions occur continuously approx. every 100ms
-    readreg(core#CR0, 1, @curr_mode)
-    case mode
-        CMODE_OFF, CMODE_AUTO:
-            mode := (mode << core#CMODE)
-        other:
-            return (curr_mode >> core#CMODE) & %1
-
-    mode := ((curr_mode & core#CMODE_MASK) | mode) & core#CR0_MASK
-    writereg(core#CR0, 1, @mode)
-
 PUB FaultClear{} | tmp
 ' Clear fault status
 '   NOTE: This has no effect when FaultMode is set to FAULTMODE_COMP
@@ -233,27 +218,44 @@ PUB Measure{} | tmp
     tmp := (tmp | (1 << core#ONESHOT)) & core#CR0_MASK
     writereg(core#CR0, 1, @tmp)
 
-PUB NotchFilter(freq): curr_freq | cmode_orig
+PUB NotchFilter(freq): curr_freq | opmode_orig
 ' Select noise rejection filter frequency, in Hz
 '   Valid values: 50, 60*
 '   Any other value polls the chip and returns the current setting
 '   NOTE: The conversion mode will be temporarily set to Normally Off when changing notch filter settings
 '       per MAX31856 datasheet, if it isn't already.
-    cmode_orig := conversionmode(-2)            ' store user's OpMode
-    conversionmode(CMODE_OFF)
+    opmode_orig := opmode(-2)                   ' store user's OpMode
+    opmode(SINGLE)
     readreg(core#CR0, 1, @curr_freq)
     case freq
         50, 60:
             freq := lookdownz(freq: 60, 50)
         other:
-            conversionmode(cmode_orig)
+            opmode(opmode_orig)
             curr_freq &= %1
             return lookupz(curr_freq: 60, 50)
 
     freq := ((curr_freq & core#NOTCHFILT_MASK) | freq) & core#CR0_MASK
     writereg(core#CR0, 1, @freq)
 
-    conversionmode(cmode_orig)                  ' restore user's OpMode
+    opmode(opmode_orig)                         ' restore user's OpMode
+
+PUB OpMode(mode) | curr_mode
+' Set operating mode
+'   Valid values:
+'       SINGLE (0): Single-shot/normally off
+'       CONT (1): Continuous conversion
+'   Any other value polls the chip and returns the current setting
+'   NOTE: In CONT mode, conversions occur continuously approx. every 100ms
+    readreg(core#CR0, 1, @curr_mode)
+    case mode
+        SINGLE, CONT:
+            mode := (mode << core#CMODE)
+        other:
+            return (curr_mode >> core#CMODE) & %1
+
+    mode := ((curr_mode & core#CMODE_MASK) | mode) & core#CR0_MASK
+    writereg(core#CR0, 1, @mode)
 
 PUB ThermoCoupleAvg(samples) | curr_smp
 ' Set number of samples averaged during thermocouple conversion
@@ -297,7 +299,7 @@ PUB ThermoCoupleTemp{}: temp
     readreg(core#LTCBH, 3, @temp)
     temp ~>= 5                                  ' shift right, but keep
     return umath.multdiv(temp, TC_RES, 100_000) '   the sign
-    'xxx the above won't work (unsigned math64 object)
+    'xxx the above won't work for negative temps (unsigned math64 object)
 
 PUB ThermoCoupleType(type): curr_type
 ' Set type of thermocouple
