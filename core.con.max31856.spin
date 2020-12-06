@@ -15,7 +15,7 @@ CON
 ' SPI Clock Polarity/Mode
     CPOL                = 1             ' 0 or 1
     CLK_DELAY           = 1
-    SCK_MAX_HZ          = 5_000_000
+    SCK_MAX_FREQ        = 5_000_000
     MOSI_BITORDER       = 5             'MSBFIRST
     MISO_BITORDER       = 2             'MSBPOST
 

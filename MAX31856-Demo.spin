@@ -3,9 +3,9 @@
     Filename: MAX31856-Demo.spin
     Description: Demo for the MAX31856 driver
     Author: Jesse Burt
-    Copyright (c) 2019
+    Copyright (c) 2020
     Created Sep 30, 2018
-    Updated Jun 11, 2019
+    Updated Dec 6, 2020
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -20,9 +20,9 @@ CON
     SER_BAUD    = 115_200
 
     CS          = 0
+    SCK         = 1
     SDI         = 2
     SDO         = 3
-    SCK         = 1
 
     SCALE       = F
 ' --
@@ -43,8 +43,9 @@ PUB Main{} | cj_temp, tc_temp
 
     setup{}
 
-    max31856.coldjuncbias(0)
+    max31856.coldjuncbias(0)                    ' -128..127
     max31856.notchfilter(60)                    ' 50, 60 (Hz)
+    max31856.opmode(max31856#CONT)
 
     repeat
         cj_temp := max31856.coldjunctemp{}
@@ -59,7 +60,6 @@ PUB Main{} | cj_temp, tc_temp
         ser.str(string("Thermocouple temp: "))
         decimal(tc_temp, 100)
         ser.clearline{}
-        ser.char(ser#CE)
         time.msleep(100)
 
 PRI Decimal(scaled, divisor) | whole[4], part[4], places, tmp, sign

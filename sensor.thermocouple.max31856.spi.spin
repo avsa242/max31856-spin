@@ -3,7 +3,7 @@
     Filename: sensor.thermocouple.max31856.spi.spin
     Author: Jesse Burt
     Description: Driver object for Maxim's MAX31856 thermocouple amplifier
-    Copyright (c) 2018
+    Copyright (c) 2020
     Created: Sep 30, 2018
     Updated: Dec 6, 2020
     See end of file for terms of use.
@@ -46,47 +46,31 @@ CON
 
 VAR
 
-    byte _CS, _MOSI, _MISO, _SCK
+    long _CS, _SCK, _MOSI, _MISO
 
 OBJ
 
     core    : "core.con.max31856"
     spi     : "com.spi.4w"
-    types   : "system.types"
-    umath   : "umath"
+    umath   : "math.unsigned64"
 
 PUB Null{}
 ' This is not a top-level object
 
 PUB Start(CS_PIN, SCK_PIN, SDI_PIN, SDO_PIN): okay
 
-    if okay := spi.start(core#CLK_DELAY, core#CPOL)
-        _CS := CS_PIN
-        _MOSI := SDI_PIN
-        _MISO := SDO_PIN
-        _SCK := SCK_PIN
-        dira[_CS] := 1
-        outa[_CS] := 1
-    else
-        return FALSE
+    if lookdown(CS_PIN: 0..31) and lookdown(SCK_PIN: 0..31) and{
+}   lookdown(SDI_PIN: 0..31) and lookdown(SDO_PIN: 0..31)
+        if okay := spi.start(core#CLK_DELAY, core#CPOL)
+            longmove(@_CS, @CS_PIN, 4)
+            outa[_CS] := 1
+            dira[_CS] := 1
+            return okay
+    return FALSE                                ' something above failed
 
 PUB Stop{}
 
     spi.stop{}
-
-PUB CJSensorEnabled(state): curr_state
-' Enable the on-chip Cold-Junction temperature sensor
-'   Valid values: *TRUE (-1 or 1), FALSE
-'   Any other value polls the chip and returns the current setting
-    readreg(core#CR0, 1, @curr_state)
-    case ||(state)
-        0, 1:
-            state := (||(state) ^ 1) << core#CJ ' logic is inverted in the reg
-        other:                                  ' so flip the bit
-            return (((curr_state >> core#CJ) & %1) ^ 1) == 1
-
-    state := ((curr_state & core#CJ_MASK) | state) & core#CR0_MASK
-    writereg(core#CR0, 1, @state)
 
 PUB CJIntHighThresh(thresh): curr_thr
 ' Set Cold-Junction HIGH fault threshold
@@ -109,6 +93,20 @@ PUB CJIntLowThresh(thresh): curr_thr
         other:
             readreg(core#CJLF, 1, @curr_thr)
             return ~~curr_thr
+
+PUB CJSensorEnabled(state): curr_state
+' Enable the on-chip Cold-Junction temperature sensor
+'   Valid values: *TRUE (-1 or 1), FALSE
+'   Any other value polls the chip and returns the current setting
+    readreg(core#CR0, 1, @curr_state)
+    case ||(state)
+        0, 1:
+            state := (||(state) ^ 1) << core#CJ ' logic is inverted in the reg
+        other:                                  ' so flip the bit
+            return (((curr_state >> core#CJ) & %1) ^ 1) == 1
+
+    state := ((curr_state & core#CJ_MASK) | state) & core#CR0_MASK
+    writereg(core#CR0, 1, @state)
 
 PUB ColdJuncBias(offset): curr_offs 'XXX Make param units degrees
 ' Set Cold-Junction temperature sensor offset (default: 0)
@@ -252,7 +250,7 @@ PUB OCFaultTestTime(time_ms) | curr_time 'XXX Note recommendations based on circ
     time_ms := ((curr_time & core#OCFAULT_MASK) | time_ms) & core#CR0_MASK
     writereg(core#CR0, 1, @time_ms)
 
-PUB OpMode(mode) | curr_mode
+PUB OpMode(mode): curr_mode
 ' Set operating mode
 '   Valid values:
 '       SINGLE (0): Single-shot/normally off
@@ -291,7 +289,7 @@ PUB TCIntLowThresh(thresh): curr_thr
             readreg(core#LTLFTH, 2, @curr_thr)
             return ~~curr_thr
 
-PUB ThermoCoupleAvg(samples) | curr_smp
+PUB ThermoCoupleAvg(samples): curr_smp
 ' Set number of samples averaged during thermocouple conversion
 '   Valid values: *1, 2, 4, 8, 16
 '   Any other value polls the chip and returns the current setting
