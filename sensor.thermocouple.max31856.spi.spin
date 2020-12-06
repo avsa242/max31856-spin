@@ -13,16 +13,16 @@
 CON
 
 ' Sensor resolution (deg C per LSB, scaled up)
-    TC_RES          = 78125 ' 0.0078125 * 10_000_000)
-    CJ_RES          = 15625 ' 0.15625 * 100_000
+    TC_RES          = 0_0078125                 ' 0.0078125 * 10_000_000
+    CJ_RES          = 0_15625                   ' 0.15625 * 100_000
 
 ' Operating modes
     SINGLE          = 0
     CONT            = 1
 
-' Fault modes
-    FAULTMODE_COMP  = 0
-    FAULTMODE_INT   = 1
+' Interrupt modes
+    COMP            = 0                         ' comparator mode
+    INTR            = 1                         ' interrupt mode
 
 ' Thermocouple types
     B               = %0000
@@ -36,13 +36,13 @@ CON
     VOLTMODE_GAIN8  = %1000
     VOLTMODE_GAIN32 = %1100
 
-' Fault mask bits (OR together any combination for use with FaultMask)
-    FAULT_CJ_HIGH   = 1 << core#CJ_HIGH
-    FAULT_CJ_LOW    = 1 << core#CJ_LOW
-    FAULT_TC_HIGH   = 1 << core#TC_HIGH
-    FAULT_TC_LOW    = 1 << core#TC_LOW
-    FAULT_OV_UV     = 1 << core#OV_UV
-    FAULT_OPEN      = 1 << core#OPEN
+' Interrupt mask bits (OR together any combination for use with IntMask())
+    CJ_HIGH         = 1 << core#CJ_HIGH
+    CJ_LOW          = 1 << core#CJ_LOW
+    TC_HIGH         = 1 << core#TC_HIGH
+    TC_LOW          = 1 << core#TC_LOW
+    OV_UV           = 1 << core#OV_UV
+    OPEN            = 1 << core#OPEN
 
 VAR
 
@@ -76,7 +76,7 @@ PUB Stop{}
 
 PUB CJSensorEnabled(state): curr_state
 ' Enable the on-chip Cold-Junction temperature sensor
-'   Valid values: TRUE (-1 or 1), FALSE
+'   Valid values: *TRUE (-1 or 1), FALSE
 '   Any other value polls the chip and returns the current setting
     readreg(core#CR0, 1, @curr_state)
     case ||(state)
@@ -90,7 +90,7 @@ PUB CJSensorEnabled(state): curr_state
 
 PUB CJIntHighThresh(thresh): curr_thr
 ' Set Cold-Junction HIGH fault threshold
-'   Valid values: -128..127
+'   Valid values: -128..127 (default: 127)
 '   Any other value polls the chip and returns the current setting
     case thresh
         -128..127:
@@ -101,7 +101,7 @@ PUB CJIntHighThresh(thresh): curr_thr
 
 PUB CJIntLowThresh(thresh): curr_thr
 ' Set Cold-Junction LOW fault threshold
-'   Valid values: -128..127
+'   Valid values: -128..127 (default: -64)
 '   Any other value polls the chip and returns the current setting
     case thresh
         -128..127:
@@ -111,7 +111,7 @@ PUB CJIntLowThresh(thresh): curr_thr
             return ~~curr_thr
 
 PUB ColdJuncBias(offset): curr_offs 'XXX Make param units degrees
-' Set Cold-Junction temperature sensor offset
+' Set Cold-Junction temperature sensor offset (default: 0)
     case offset
         -128..127:  '-8C..7.9375C
             writereg(core#CJTO, 1, @offset) 'xxx lsb is 0.0625C
@@ -120,7 +120,7 @@ PUB ColdJuncBias(offset): curr_offs 'XXX Make param units degrees
             return ~~curr_offs
 
 PUB ColdJuncTemp{}: cjtemp
-' Read the Cold-Junction temperature sensor
+' Current cold-junction temperature
     readreg(core#CJTH, 2, @cjtemp)
     cjtemp ~>= 2                                ' shift right but keep
     return umath.multdiv(cjtemp, CJ_RES, 10_000)'   the sign
@@ -134,7 +134,7 @@ PUB IntClear{} | tmp
     writereg(core#CR0, 1, @tmp)
 
 PUB Interrupt{}: src
-' Return fault status, as bitfield
+' Return interrupt status
 '   Returns: (for each individual bit)
 '       0: No fault detected
 '       1: Fault detected
@@ -147,43 +147,53 @@ PUB Interrupt{}: src
 '       2   Thermocouple temperature below LOW temperature threshold
 '       1   Over-voltage or Under-voltage
 '       0   Thermocouple open-circuit
+'   NOTE: Asserted interrupts will always be flagged in this register,
+'       regardless of the set interrupt mask
+'   NOTE: FAULT pin is active low
     readreg(core#SR, 1, @src)
 
 PUB IntMask(mask): curr_mask
-' Set interrupt mask
-'   Valid values: (for each individual bit)
-'       0: /FAULT output asserted
-'      *1: /FAULT output masked
-'   Bit: 5    0
-'       %000000
-'       Bit 5   Cold-junction HIGH fault threshold
-'           4   Cold-junction LOW fault threshold
-'           3   Thermocouple temperature HIGH fault threshold
-'           2   Thermocouple temperature LOW fault threshold
-'           1   Over-voltage or Under-voltage input
+' Set interrupt mask (affects FAULT pin only)
+'   Valid values:
+'   Bits: 543210 (For each bit, 0: disable interrupt, 1: enable interrupt)
+'       Bit 5   Cold-junction interrupt HIGH threshold
+'           4   Cold-junction interrupt LOW threshold
+'           3   Thermocouple temperature interrupt HIGH threshold
+'           2   Thermocouple temperature interrupt LOW threshold
+'           1   Over-voltage or under-voltage input
 '           0   Thermocouple open-circuit
-'   Example: %111101 would assert the /FAULT pin when an over-voltage or under-voltage condition is detected
+'   Example: %000010 would assert the /FAULT pin when an over-voltage or
+'       under-voltage condition is detected
 '   Any other value polls the chip and returns the current setting
+'   NOTE: FAULT pin is active low
     case mask
         %000000..%111111:
-            curr_mask := mask & core#FAULTMASK_MASK
-            writereg(core#FAULTMASK, 1, @curr_mask)
+            ' the chip considers cleared bits as enabled and set bits
+            ' as masked off, so invert the mask set by the user
+            ' before actually writing it to the chip
+            mask := (mask ^ core#FAULTMASK_MASK)
+            mask |= (core#RSVD_BITS << core#RSVD)
+            writereg(core#FAULTMASK, 1, @mask)
         other:
             readreg(core#FAULTMASK, 1, @curr_mask)
-            return curr_mask & core#FAULTMASK_MASK
+            return (curr_mask ^ core#FAULTMASK_MASK)
 
 PUB IntMode(mode): curr_mode
-' Defines behavior of fault flag
+' Set interrupt mode
 '   Valid values:
-'       *FAULTMODE_COMP (0): Comparator mode - fault flag will be asserted when fault condition is true, and will clear
-'           when the condition is no longer true, with a 2deg C hysteresis.
-'       FAULTMODE_INT (1): Interrupt mode - fault flag will be asserted when fault condition is true, and will remain
-'           asserted until fault status is explicitly cleared with FaultClear.
-'           NOTE: If the fault condition is still true when the status is cleared, the flag will be asserted again immediately.
+'       *COMP (0): Comparator mode - fault flag will be asserted
+'       when fault condition is true, and will clear when the condition is
+'       no longer true, _with a 2deg C hysteresis._
+'
+'       INTR (1): Interrupt mode - fault flag will be asserted when
+'       fault condition is true, and will remain asserted until fault status
+'       is explicitly cleared with IntClear().
+'       NOTE: If the fault condition is still true when the status is cleared,
+'       the flag will be asserted again immediately.
 '   Any other value polls the chip and returns the current setting
     readreg(core#CR0, 1, @curr_mode)
     case mode
-        FAULTMODE_COMP, FAULTMODE_INT:
+        COMP, INTR:
             mode := mode << core#FAULT
         other:
             return ((curr_mode >> core#FAULT) & 1)
@@ -193,11 +203,13 @@ PUB IntMode(mode): curr_mode
 
 PUB Measure{} | tmp
 ' Perform single cold-junction and thermocouple conversion
-' NOTE: Single conversion is performed only if ConversionMode is set to CMODE_OFF (Normally Off)
+'   NOTE: Single conversion is performed only if OpMode() is set to SINGLE
 ' Approximate conversion times:
 '   Filter Setting      Time
 '   60Hz                143ms
 '   50Hz                169ms
+'   NOTE: Conversion times will be reduced by approximately 25ms if the
+'       cold-junction sensor is disabled
     readreg(core#CR0, 1, @tmp)
     tmp &= core#ONESHOT_MASK
     tmp := (tmp | (1 << core#ONESHOT)) & core#CR0_MASK
@@ -259,7 +271,7 @@ PUB OpMode(mode) | curr_mode
 
 PUB TCIntHighThresh(thresh): curr_thr
 ' Set thermocouple interrupt high threshold
-'   Valid values: -32768..32767
+'   Valid values: -32768..32767 (default: 32767)
 '   Any other value polls the chip and returns the current setting
     case thresh
         -32768..32767:
@@ -270,7 +282,7 @@ PUB TCIntHighThresh(thresh): curr_thr
 
 PUB TCIntLowThresh(thresh): curr_thr
 ' Set thermocouple interrupt low threshold
-'   Valid values: -32768..32767
+'   Valid values: -32768..32767 (default: -32768)
 '   Any other value polls the chip and returns the current setting
     case thresh
         -32768..32767:
@@ -281,7 +293,7 @@ PUB TCIntLowThresh(thresh): curr_thr
 
 PUB ThermoCoupleAvg(samples) | curr_smp
 ' Set number of samples averaged during thermocouple conversion
-'   Valid values: 1*, 2, 4, 8, 16
+'   Valid values: *1, 2, 4, 8, 16
 '   Any other value polls the chip and returns the current setting
     readreg(core#CR1, 1, @curr_smp)
     case samples
@@ -303,7 +315,7 @@ PUB ThermoCoupleTemp{}: temp
 
 PUB ThermoCoupleType(type): curr_type
 ' Set type of thermocouple
-'   Valid values: B (0), E (1), J (2), K* (3), N (4), R (5), S (6), T (7)
+'   Valid values: B (0), E (1), J (2), *K (3), N (4), R (5), S (6), T (7)
 '   Any other value polls the chip and returns the current setting
     readreg(core#CR1, 1, @curr_type)
     case type

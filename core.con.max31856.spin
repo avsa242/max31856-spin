@@ -51,12 +51,14 @@ CON
 
     FAULTMASK           = $02
     FAULTMASK_MASK      = $3F
+        RSVD            = 6
         CJ_HIGH         = 5
         CJ_LOW          = 4
         TC_HIGH         = 3
         TC_LOW          = 2
         OV_UV           = 1
         OPEN            = 0
+        RSVD_BITS       = %11
         CJ_HIGH_MASK    = (1 << CJ_HIGH) ^ FAULTMASK_MASK
         CJ_LOW_MASK     = (1 << CJ_LOW) ^ FAULTMASK_MASK
         TC_HIGH_MASK    = (1 << TC_HIGH) ^ FAULTMASK_MASK
