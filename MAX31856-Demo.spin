@@ -16,9 +16,9 @@ CON
     _xinfreq    = cfg#_xinfreq
 
     CS          = 0
-    SDI         = 1
-    SDO         = 2
-    SCK         = 3
+    SDI         = 2
+    SDO         = 3
+    SCK         = 1
 
     LED         = cfg#LED1
 
