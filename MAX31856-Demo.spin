@@ -45,9 +45,9 @@ PUB Main{} | cj_temp, tc_temp
 
 '    ser.dec(max31856.thermocouplelowfault(negx))
 '    repeat
-    max31856.coldjuncoffset(0)
+    max31856.coldjuncbias(0)
     max31856.notchfilter(60)
-    max31856.conversionmode(max31856#CMODE_AUTO)
+    max31856.opmode(max31856#CONT)
 
     repeat
         cj_temp := max31856.coldjunctemp{}
