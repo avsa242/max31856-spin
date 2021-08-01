@@ -28,8 +28,8 @@ P2/SPIN2:
 
 ## Compiler compatibility
 
-* P1/SPIN1: OpenSpin (tested with 1.00.81), FlexSpin (tested with 5.3.3-beta)
-* P2/SPIN2: FlexSpin (tested with 5.3.3-beta)
+* P1/SPIN1: OpenSpin (tested with 1.00.81), FlexSpin (tested with 6.0.0-beta)
+* P2/SPIN2: FlexSpin (tested with 6.0.0-beta)
 * ~~BST~~ (incompatible - no preprocessor)
 * ~~Propeller Tool~~ (incompatible - no preprocessor)
 * ~~PNut~~ (incompatible - no preprocessor)
