@@ -21,15 +21,18 @@ This is a P8X32A/Propeller, P2X8C4M64P/Propeller 2 driver object for Maxim's MAX
 
 P1/SPIN1:
 * spin-standard-library
-* P1/SPIN1: 1 extra core/cog for the PASM SPI driver
+* P1/SPIN1: 1 extra core/cog for the PASM SPI engine
 
 P2/SPIN2:
 * p2-spin-standard-library
 
-## Compiler compatibility
+## Compiler Compatibility
 
-* P1/SPIN1: OpenSpin (tested with 1.00.81), FlexSpin (tested with 6.0.0-beta)
-* P2/SPIN2: FlexSpin (tested with 6.0.0-beta)
+* P1/SPIN1 OpenSpin (bytecode): Untested (deprecated)
+* P1/SPIN1 FlexSpin (bytecode): OK, tested with 5.9.7-beta
+* P1/SPIN1 FlexSpin (native): OK, tested with 5.9.7-beta
+* ~~P2/SPIN2 FlexSpin (nu-code): FTBFS, tested with 5.9.7-beta~~
+* P2/SPIN2 FlexSpin (native): OK, tested with 5.9.7-beta
 * ~~BST~~ (incompatible - no preprocessor)
 * ~~Propeller Tool~~ (incompatible - no preprocessor)
 * ~~PNut~~ (incompatible - no preprocessor)
@@ -37,12 +40,5 @@ P2/SPIN2:
 ## Limitations
 
 * Very early in development - may malfunction, or outright fail to build
-* The chip has no known identification register, so the driver will start successfully as long as the SPI driver does
+* The chip has no known identification register, so the driver will start successfully as long as the SPI engine does
 
-## TODO
-
-- [ ] Modify ColdJuncOffset to take degrees as a parameter, rather than s8
-- [x] Handle Celsius/Fahrenheit in the driver
-- [x] Handle byte order in a cleaner fashion
-- [x] Implement remaining functionality described in datasheet (*implemented, but some methods' parameters are currently raw values not calculated to any scale*)
-- [x] Implement demo and test objects
