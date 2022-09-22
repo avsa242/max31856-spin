@@ -5,7 +5,7 @@
     Description: Driver object for Maxim's MAX31856 thermocouple amplifier
     Copyright (c) 2022
     Created: Sep 30, 2018
-    Updated: Jul 22, 2022
+    Updated: Sep 22, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -66,10 +66,10 @@ OBJ
 #endif
     core: "core.con.max31856"                   ' HW-specific constants
 
-PUB Null{}
+PUB null{}
 ' This is not a top-level object
 
-PUB Startx(CS_PIN, SCK_PIN, SDI_PIN, SDO_PIN): status
+PUB startx(CS_PIN, SCK_PIN, SDI_PIN, SDO_PIN): status
 ' Start using custom settings
     if lookdown(CS_PIN: 0..31) and lookdown(SCK_PIN: 0..31) and {
 }   lookdown(SDI_PIN: 0..31) and lookdown(SDO_PIN: 0..31)
@@ -83,11 +83,12 @@ PUB Startx(CS_PIN, SCK_PIN, SDI_PIN, SDO_PIN): status
     ' Lastly - make sure you have at least one free core/cog
     return FALSE
 
-PUB Stop{}
-
+PUB stop{}
+' Stop the driver
     spi.deinit{}
+    _CS := 0
 
-PUB CJ_IntHighThresh(thresh): curr_thr
+PUB cj_inthighthresh(thresh): curr_thr
 ' Set Cold-Junction HIGH fault threshold
 '   Valid values: -128..127 (default: 127)
 '   Any other value polls the chip and returns the current setting
@@ -98,7 +99,7 @@ PUB CJ_IntHighThresh(thresh): curr_thr
             readreg(core#CJHF, 1, @curr_thr)
             return ~~curr_thr
 
-PUB CJ_IntLowThresh(thresh): curr_thr
+PUB cj_intlowthresh(thresh): curr_thr
 ' Set Cold-Junction LOW fault threshold
 '   Valid values: -128..127 (default: -64)
 '   Any other value polls the chip and returns the current setting
@@ -109,7 +110,7 @@ PUB CJ_IntLowThresh(thresh): curr_thr
             readreg(core#CJLF, 1, @curr_thr)
             return ~~curr_thr
 
-PUB CJ_SensorEnabled(state): curr_state
+PUB cj_sensorenabled(state): curr_state
 ' Enable the on-chip Cold-Junction temperature sensor
 '   Valid values: *TRUE (-1 or 1), FALSE
 '   Any other value polls the chip and returns the current setting
@@ -123,7 +124,7 @@ PUB CJ_SensorEnabled(state): curr_state
     state := ((curr_state & core#CJ_MASK) | state) & core#CR0_MASK
     writereg(core#CR0, 1, @state)
 
-PUB CJ_Word2Temp(cj_word): temp
+PUB cj_word2temp(cj_word): temp
 ' Convert cold-junction ADC word to temperature, in hundredths of a degree
 '   in chosen scale
     temp := (cj_word * CJ_RES) / 10_000
@@ -132,7 +133,7 @@ PUB CJ_Word2Temp(cj_word): temp
         F:
             temp := ((temp * 90) / 50) + 32_00
 
-PUB CJ_Bias(offset): curr_offs
+PUB cj_bias(offset): curr_offs
 ' Set Cold-Junction temperature sensor offset, in ten-thousandths of a degree C
 '   Valid values: -8_0000..7_9375 (default: 0)
 '   Any other value polls the chip and returns the current setting
@@ -144,7 +145,7 @@ PUB CJ_Bias(offset): curr_offs
             readreg(core#CJTO, 1, @curr_offs)
             return (~curr_offs * 0_0625)
 
-PUB CJ_Data{}: cj_word
+PUB cj_data{}: cj_word
 ' Read cold-junction data
 '   Returns: s16
     cj_word := 0
@@ -153,7 +154,7 @@ PUB CJ_Data{}: cj_word
     cj_word ~>= 2                               ' right-justify, keeping sign
                                                 ' (ADC word is left-justified)
 
-PUB IntClear{} | tmp
+PUB intclear{} | tmp
 ' Clear fault status
 '   NOTE: This has no effect when FaultMode is set to FAULTMODE_COMP
     readreg(core#CR0, 1, @tmp)
@@ -161,7 +162,7 @@ PUB IntClear{} | tmp
     tmp := (tmp | (1 << core#FAULTCLR)) & core#CR0_MASK
     writereg(core#CR0, 1, @tmp)
 
-PUB Interrupt{}: src
+PUB interrupt{}: src
 ' Return interrupt status
 '   Returns: (for each individual bit)
 '       0: No fault detected
@@ -180,7 +181,7 @@ PUB Interrupt{}: src
 '   NOTE: FAULT pin is active low
     readreg(core#SR, 1, @src)
 
-PUB IntMask(mask): curr_mask
+PUB intmask(mask): curr_mask
 ' Set interrupt mask (affects FAULT pin only)
 '   Valid values:
 '   Bits: 543210 (For each bit, 0: disable interrupt, 1: enable interrupt)
@@ -206,7 +207,7 @@ PUB IntMask(mask): curr_mask
             readreg(core#FAULTMASK, 1, @curr_mask)
             return (curr_mask ^ core#FAULTMASK_MASK)
 
-PUB IntMode(mode): curr_mode
+PUB intmode(mode): curr_mode
 ' Set interrupt mode
 '   Valid values:
 '       *COMP (0): Comparator mode - fault flag will be asserted
@@ -229,7 +230,7 @@ PUB IntMode(mode): curr_mode
     mode := ((curr_mode & core#FAULT_MASK) | mode) & core#CR0_MASK
     writereg(core#CR0, 1, @curr_mode)
 
-PUB Measure{} | tmp
+PUB measure{} | tmp
 ' Perform single cold-junction and thermocouple conversion
 '   NOTE: Single conversion is performed only if OpMode() is set to SINGLE
 ' Approximate conversion times:
@@ -243,7 +244,7 @@ PUB Measure{} | tmp
     tmp := (tmp | (1 << core#ONESHOT)) & core#CR0_MASK
     writereg(core#CR0, 1, @tmp)
 
-PUB NotchFilter(freq): curr_freq | opmode_orig
+PUB notchfilter(freq): curr_freq | opmode_orig
 ' Select noise rejection filter frequency, in Hz
 '   Valid values: 50, 60*
 '   Any other value polls the chip and returns the current setting
@@ -265,7 +266,7 @@ PUB NotchFilter(freq): curr_freq | opmode_orig
 
     opmode(opmode_orig)                         ' restore user's OpMode
 
-PUB OCFaultTestTime(time_ms): curr_time 'XXX Note recommendations based on circuit design
+PUB ocfaulttesttime(time_ms): curr_time 'XXX Note recommendations based on circuit design
 ' Sets open-circuit fault detection test time, in ms
 '   Valid values: 0 (disable fault detection), 10, 32, 100
 '   Any other value polls the chip and returns the current setting
@@ -280,7 +281,7 @@ PUB OCFaultTestTime(time_ms): curr_time 'XXX Note recommendations based on circu
     time_ms := ((curr_time & core#OCFAULT_MASK) | time_ms) & core#CR0_MASK
     writereg(core#CR0, 1, @time_ms)
 
-PUB OpMode(mode): curr_mode
+PUB opmode(mode): curr_mode
 ' Set operating mode
 '   Valid values:
 '       SINGLE (0): Single-shot/normally off
@@ -297,7 +298,7 @@ PUB OpMode(mode): curr_mode
     mode := ((curr_mode & core#CMODE_MASK) | mode) & core#CR0_MASK
     writereg(core#CR0, 1, @mode)
 
-PUB TC_Avg(samples): curr_smp
+PUB tc_avg(samples): curr_smp
 ' Set number of samples averaged during thermocouple conversion
 '   Valid values: *1, 2, 4, 8, 16
 '   Any other value polls the chip and returns the current setting
@@ -312,7 +313,7 @@ PUB TC_Avg(samples): curr_smp
     samples := ((curr_smp & core#AVGSEL_MASK) | samples) & core#CR1_MASK
     writereg(core#CR1, 1, @samples)
 
-PUB TC_Data{}: temp_word
+PUB tc_data{}: temp_word
 ' Read thermocouple data
 '   Returns: s19
     temp_word := 0
@@ -321,7 +322,7 @@ PUB TC_Data{}: temp_word
     temp_word ~>= 13                            ' right-justify, keeping sign
                                                 ' (ADC word is left-justified)
 
-PUB TC_IntHighThresh(thresh): curr_thr
+PUB tc_inthighthresh(thresh): curr_thr
 ' Set thermocouple interrupt high threshold
 '   Valid values: -32768..32767 (default: 32767)
 '   Any other value polls the chip and returns the current setting
@@ -332,7 +333,7 @@ PUB TC_IntHighThresh(thresh): curr_thr
             readreg(core#LTHFTH, 2, @curr_thr)
             return ~~curr_thr
 
-PUB TC_IntLowThresh(thresh): curr_thr
+PUB tc_intlowthresh(thresh): curr_thr
 ' Set thermocouple interrupt low threshold
 '   Valid values: -32768..32767 (default: -32768)
 '   Any other value polls the chip and returns the current setting
@@ -343,7 +344,7 @@ PUB TC_IntLowThresh(thresh): curr_thr
             readreg(core#LTLFTH, 2, @curr_thr)
             return ~~curr_thr
 
-PUB TC_Type(type): curr_type
+PUB tc_type(type): curr_type
 ' Set type of thermocouple
 '   Valid values: TYPE_B (0), TYPE_E (1), TYPE_J (2), *TYPE_K (3), TYPE_N (4),
 '       TYPE_R (5), TYPE_S (6), TYPE_T (7)
@@ -357,7 +358,7 @@ PUB TC_Type(type): curr_type
     type := ((curr_type & core#TC_TYPE_MASK) | type) & core#CR1_MASK
     writereg(core#CR1, 1, @type)
 
-PUB TC_Word2Temp(tc_word): temp
+PUB tc_word2temp(tc_word): temp
 ' Convert thermocouple ADC word to temperature, in hundredths of a degree
 '   in chosen scale
     temp := (tc_word * TC_RES) / 1000
@@ -366,11 +367,11 @@ PUB TC_Word2Temp(tc_word): temp
         F:
             temp := ((temp * 90) / 50) + 32_00
 
-PUB TempWord2Deg(tword): temp
+PUB tempword2deg(tword): temp
 ' Alias for TCWord2Temp
     return tc_word2temp(tword)
 
-PRI readReg(reg_nr, nr_bytes, ptr_buff) | tmp
+PRI readreg(reg_nr, nr_bytes, ptr_buff) | tmp
 ' Read nr_bytes from device into ptr_buff
     case reg_nr                                 ' validate register
         core#CR0..core#SR:
@@ -382,7 +383,7 @@ PRI readReg(reg_nr, nr_bytes, ptr_buff) | tmp
     spi.rdblock_msbf(ptr_buff, nr_bytes)        ' then read data, MSByte-first
     outa[_CS] := 1
 
-PRI writeReg(reg_nr, nr_bytes, ptr_buff) | tmp
+PRI writereg(reg_nr, nr_bytes, ptr_buff) | tmp
 ' Write nr_bytes from ptr_buff to device
     case reg_nr
         core#CR0..core#CJTL:
@@ -397,24 +398,21 @@ PRI writeReg(reg_nr, nr_bytes, ptr_buff) | tmp
 
 DAT
 {
-TERMS OF USE: MIT License
+Copyright 2022 Jesse Burt
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 }
 
