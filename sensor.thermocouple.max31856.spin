@@ -5,7 +5,7 @@
     Description: Driver object for Maxim's MAX31856 thermocouple amplifier
     Copyright (c) 2022
     Created: Sep 30, 2018
-    Updated: Sep 22, 2022
+    Updated: Sep 25, 2022
     See end of file for terms of use.
     --------------------------------------------
 }
@@ -24,10 +24,6 @@ CON
     SINGLE          = 0
     CONT            = 1
 
-' Interrupt modes
-    COMP            = 0                         ' comparator mode
-    INTR            = 1                         ' interrupt mode
-
 ' Thermocouple types
     TYPE_B          = %0000
     TYPE_E          = %0001
@@ -40,7 +36,7 @@ CON
     VOLTMODE_GAIN8  = %1000
     VOLTMODE_GAIN32 = %1100
 
-' Interrupt mask bits (OR together any combination for use with IntMask())
+' Interrupt mask bits (OR together any combination for use with int_mask())
     CJ_HIGH         = 1 << core#CJ_HIGH
     CJ_LOW          = 1 << core#CJ_LOW
     TC_HIGH         = 1 << core#TC_HIGH
@@ -88,29 +84,33 @@ PUB stop{}
     spi.deinit{}
     _CS := 0
 
-PUB cj_inthighthresh(thresh): curr_thr
-' Set Cold-Junction HIGH fault threshold
-'   Valid values: -128..127 (default: 127)
-'   Any other value polls the chip and returns the current setting
-    case thresh
-        -128..127:
-            writereg(core#CJHF, 1, @thresh)
-        other:
-            readreg(core#CJHF, 1, @curr_thr)
-            return ~~curr_thr
+PUB cj_int_hi_thresh{}: thresh
+' Get Cold-Junction HIGH fault threshold
+    thresh := 0
+    readreg(core#CJHF, 1, @thresh)
+    return ~~thresh
 
-PUB cj_intlowthresh(thresh): curr_thr
+PUB cj_int_set_hi_thresh(thresh)
+' Set Cold-Junction HIGH fault threshold
+'   Valid values: -128..127 (default: 127; clamped to range)
+    thresh := -128 #> thresh <# 127
+    writereg(core#CJHF, 1, @thresh)
+
+PUB cj_int_lo_thresh{}: thresh
 ' Set Cold-Junction LOW fault threshold
 '   Valid values: -128..127 (default: -64)
 '   Any other value polls the chip and returns the current setting
-    case thresh
-        -128..127:
-            writereg(core#CJLF, 1, @thresh)
-        other:
-            readreg(core#CJLF, 1, @curr_thr)
-            return ~~curr_thr
+    thresh := 0
+    readreg(core#CJLF, 1, @thresh)
+    return ~~thresh
 
-PUB cj_sensorenabled(state): curr_state
+PUB cj_int_set_lo_thresh(thresh)
+' Set Cold-Junction LOW fault threshold
+'   Valid values: -128..127 (default: -64; clamped to range)
+    thresh := -128 #> thresh <# 127
+    writereg(core#CJLF, 1, @thresh)
+
+PUB cj_sensor_ena(state): curr_state
 ' Enable the on-chip Cold-Junction temperature sensor
 '   Valid values: *TRUE (-1 or 1), FALSE
 '   Any other value polls the chip and returns the current setting
@@ -154,34 +154,35 @@ PUB cj_data{}: cj_word
     cj_word ~>= 2                               ' right-justify, keeping sign
                                                 ' (ADC word is left-justified)
 
-PUB intclear{} | tmp
+PUB int_clr{} | tmp
 ' Clear fault status
-'   NOTE: This has no effect when FaultMode is set to FAULTMODE_COMP
+'   NOTE: This has no effect when int_latch_ena() is set to FALSE
     readreg(core#CR0, 1, @tmp)
     tmp &= core#FAULTCLR_MASK
     tmp := (tmp | (1 << core#FAULTCLR)) & core#CR0_MASK
     writereg(core#CR0, 1, @tmp)
 
-PUB interrupt{}: src
-' Return interrupt status
-'   Returns: (for each individual bit)
-'       0: No fault detected
-'       1: Fault detected
-'
-'   Bit 7   Cold-junction out of normal operating range
-'       6   Thermcouple out of normal operating range
-'       5   Cold-junction above HIGH temperature threshold
-'       4   Cold-junction below LOW temperature threshold
-'       3   Thermocouple temperature above HIGH temperature threshold
-'       2   Thermocouple temperature below LOW temperature threshold
-'       1   Over-voltage or Under-voltage
-'       0   Thermocouple open-circuit
-'   NOTE: Asserted interrupts will always be flagged in this register,
-'       regardless of the set interrupt mask
-'   NOTE: FAULT pin is active low
-    readreg(core#SR, 1, @src)
+PUB int_latch_ena(state): curr_state
+' Enable interrupt latching
+'   Valid values:
+'       *FALSE (0): fault flag will be asserted when fault condition is true, and will clear when
+'           the condition is no longer true, _with a 2deg C hysteresis._
+'       TRUE (1): fault flag will be asserted when fault condition is true, and will remain
+'           asserted until fault status is explicitly cleared with int_clr().
+'       NOTE: If the fault condition is still true when the status is cleared,
+'       the flag will be asserted again immediately.
+'   Any other value polls the chip and returns the current setting
+    readreg(core#CR0, 1, @curr_state)
+    case ||(state)
+        0, 1:
+            state := (state & 1) << core#FAULT
+        other:
+            return ((curr_state >> core#FAULT) & 1)
 
-PUB intmask(mask): curr_mask
+    state := ((curr_state & core#FAULT_MASK) | state) & core#CR0_MASK
+    writereg(core#CR0, 1, @curr_state)
+
+PUB int_mask(mask): curr_mask
 ' Set interrupt mask (affects FAULT pin only)
 '   Valid values:
 '   Bits: 543210 (For each bit, 0: disable interrupt, 1: enable interrupt)
@@ -207,28 +208,24 @@ PUB intmask(mask): curr_mask
             readreg(core#FAULTMASK, 1, @curr_mask)
             return (curr_mask ^ core#FAULTMASK_MASK)
 
-PUB intmode(mode): curr_mode
-' Set interrupt mode
-'   Valid values:
-'       *COMP (0): Comparator mode - fault flag will be asserted
-'       when fault condition is true, and will clear when the condition is
-'       no longer true, _with a 2deg C hysteresis._
+PUB interrupt{}: src
+' Return interrupt status
+'   Returns: (for each individual bit)
+'       0: No fault detected
+'       1: Fault detected
 '
-'       INTR (1): Interrupt mode - fault flag will be asserted when
-'       fault condition is true, and will remain asserted until fault status
-'       is explicitly cleared with IntClear().
-'       NOTE: If the fault condition is still true when the status is cleared,
-'       the flag will be asserted again immediately.
-'   Any other value polls the chip and returns the current setting
-    readreg(core#CR0, 1, @curr_mode)
-    case mode
-        COMP, INTR:
-            mode := mode << core#FAULT
-        other:
-            return ((curr_mode >> core#FAULT) & 1)
-
-    mode := ((curr_mode & core#FAULT_MASK) | mode) & core#CR0_MASK
-    writereg(core#CR0, 1, @curr_mode)
+'   Bit 7   Cold-junction out of normal operating range
+'       6   Thermcouple out of normal operating range
+'       5   Cold-junction above HIGH temperature threshold
+'       4   Cold-junction below LOW temperature threshold
+'       3   Thermocouple temperature above HIGH temperature threshold
+'       2   Thermocouple temperature below LOW temperature threshold
+'       1   Over-voltage or Under-voltage
+'       0   Thermocouple open-circuit
+'   NOTE: Asserted interrupts will always be flagged in this register,
+'       regardless of the set interrupt mask
+'   NOTE: FAULT pin is active low
+    readreg(core#SR, 1, @src)
 
 PUB measure{} | tmp
 ' Perform single cold-junction and thermocouple conversion
@@ -244,7 +241,7 @@ PUB measure{} | tmp
     tmp := (tmp | (1 << core#ONESHOT)) & core#CR0_MASK
     writereg(core#CR0, 1, @tmp)
 
-PUB notchfilter(freq): curr_freq | opmode_orig
+PUB notch_filt_freq(freq): curr_freq | opmode_orig
 ' Select noise rejection filter frequency, in Hz
 '   Valid values: 50, 60*
 '   Any other value polls the chip and returns the current setting
@@ -266,7 +263,7 @@ PUB notchfilter(freq): curr_freq | opmode_orig
 
     opmode(opmode_orig)                         ' restore user's OpMode
 
-PUB ocfaulttesttime(time_ms): curr_time 'XXX Note recommendations based on circuit design
+PUB oc_fault_test_time(time_ms): curr_time 'XXX Note recommendations based on circuit design
 ' Sets open-circuit fault detection test time, in ms
 '   Valid values: 0 (disable fault detection), 10, 32, 100
 '   Any other value polls the chip and returns the current setting
@@ -298,7 +295,7 @@ PUB opmode(mode): curr_mode
     mode := ((curr_mode & core#CMODE_MASK) | mode) & core#CR0_MASK
     writereg(core#CR0, 1, @mode)
 
-PUB tc_avg(samples): curr_smp
+PUB tc_smp_avg(samples): curr_smp
 ' Set number of samples averaged during thermocouple conversion
 '   Valid values: *1, 2, 4, 8, 16
 '   Any other value polls the chip and returns the current setting
@@ -322,27 +319,31 @@ PUB tc_data{}: temp_word
     temp_word ~>= 13                            ' right-justify, keeping sign
                                                 ' (ADC word is left-justified)
 
-PUB tc_inthighthresh(thresh): curr_thr
+PUB tc_int_hi_thresh{}: thresh
+' Get thermocouple interrupt high threshold
+    readreg(core#LTHFTH, 2, @thresh)
+    return ~~thresh
+
+PUB tc_int_set_hi_thresh(thresh)
 ' Set thermocouple interrupt high threshold
 '   Valid values: -32768..32767 (default: 32767)
-'   Any other value polls the chip and returns the current setting
-    case thresh
-        -32768..32767:
-            writereg(core#LTHFTH, 2, @thresh)
-        other:
-            readreg(core#LTHFTH, 2, @curr_thr)
-            return ~~curr_thr
+    thresh := -32768 #> thresh <# 32767
+    writereg(core#LTHFTH, 2, @thresh)
 
-PUB tc_intlowthresh(thresh): curr_thr
+PUB tc_int_lo_thresh{}: thresh
 ' Set thermocouple interrupt low threshold
 '   Valid values: -32768..32767 (default: -32768)
 '   Any other value polls the chip and returns the current setting
-    case thresh
-        -32768..32767:
-            writereg(core#LTLFTH, 2, @thresh)
-        other:
-            readreg(core#LTLFTH, 2, @curr_thr)
-            return ~~curr_thr
+    thresh := 0
+    readreg(core#LTLFTH, 2, @thresh)
+    return ~~thresh
+
+PUB tc_int_set_lo_thresh(thresh)
+' Set thermocouple interrupt low threshold
+'   Valid values: -32768..32767 (default: -32768)
+'   Any other value polls the chip and returns the current setting
+    thresh := -32768 #> thresh <# 32767
+    writereg(core#LTLFTH, 2, @thresh)
 
 PUB tc_type(type): curr_type
 ' Set type of thermocouple
@@ -367,7 +368,7 @@ PUB tc_word2temp(tc_word): temp
         F:
             temp := ((temp * 90) / 50) + 32_00
 
-PUB tempword2deg(tword): temp
+PUB temp_word2deg(tword): temp
 ' Alias for TCWord2Temp
     return tc_word2temp(tword)
 
