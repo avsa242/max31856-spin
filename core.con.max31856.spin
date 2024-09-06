@@ -1,13 +1,12 @@
 {
-    --------------------------------------------
-    Filename: core.con.max31856.spin
-    Author: Jesse Burt
-    Description: MAX31856-specific constants
-    Copyright (c) 2021
-    Created: Sep 30, 2018
-    Updated: Dec 28, 2021
-    See end of file for terms of use.
-    --------------------------------------------
+----------------------------------------------------------------------------------------------------
+    Filename:       core.con.max31856.spin
+    Description:    MAX31856-specific constants
+    Author:         Jesse Burt
+    Started:        Sep 30, 2018
+    Updated:        Sep 6, 2024
+    Copyright (c) 2024 - See end of file for terms of use.
+----------------------------------------------------------------------------------------------------
 }
 
 CON
@@ -84,12 +83,14 @@ CON
     
     SR                  = $0F
 
-PUB null{}
+
+PUB null()
 ' This is not a top-level object
+
 
 DAT
 {
-Copyright 2022 Jesse Burt
+Copyright 2024 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,

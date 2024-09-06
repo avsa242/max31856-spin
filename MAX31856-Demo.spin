@@ -1,64 +1,75 @@
 {
-    --------------------------------------------
-    Filename: MAX31856-Demo.spin
-    Author: Jesse Burt
-    Description: MAX31856 driver demo
-        * Temp data output
-    Copyright (c) 2022
-    Started Sep 30, 2018
-    Updated Jul 15, 2023
-    See end of file for terms of use.
-    --------------------------------------------
-
-    Build-time symbols supported by driver:
-        -DMAX31856_SPI (default if none specified)
-        -DMAX31856_SPI_BC
+----------------------------------------------------------------------------------------------------
+    Filename:       MAX31856-Demo.spin
+    Description:    MAX31856 driver demo
+        * Temperature data output
+    Author:         Jesse Burt
+    Started:        Sep 30, 2018
+    Updated:        Sep 6, 2024
+    Copyright (c) 2024 - See end of file for terms of use.
+----------------------------------------------------------------------------------------------------
 }
+
+' Uncomment the two lines below to use the bytecode-based SPI engine
+'#define MAX31856_SPI_BC
+'#pragma exportdef(MAX31856_SPI_BC)
+
 #define HAS_THERMCPL
 CON
 
-    _clkmode    = cfg#_clkmode
-    _xinfreq    = cfg#_xinfreq
+    _clkmode    = xtal1+pll16x
+    _xinfreq    = 5_000_000
 
-' -- User-modifiable constants
-    SER_BAUD    = 115_200
-' --
 
 OBJ
 
-    cfg:    "boardcfg.flip"
     sensor: "sensor.thermocouple.max31856" | CS=0, SCK=1, MOSI=2, MISO=3
-    ser:    "com.serial.terminal.ansi"
+    ser:    "com.serial.terminal.ansi" | SER_BAUD=115_2000
     time:   "time"
 
-PUB setup{}
 
-    ser.start(SER_BAUD)
+PUB main() | tscl, cj_temp, tc_temp
+
+    setup()
+
+    sensor.temp_scale(sensor.C)                 ' C, F, K
+    sensor.tc_type(sensor.TYPE_K)               ' TYPE_B (0), TYPE_E (1), TYPE_J (2), TYPE_K (3)
+                                                ' TYPE_N (4), TYPE_R (5), TYPE_S (6), TYPE_T (7)
+
+    sensor.cj_bias(0)                           ' -8_0000..7_9375 (= x.xxxx C)
+    sensor.notch_filt_freq(60)                  ' 50, 60 (Hz) mains power frequency
+    sensor.opmode(sensor.CONT)
+
+    repeat
+        tscl := lookupz(sensor.temp_scale(-2): "C", "F", "K")
+        cj_temp := sensor.cj_temp()
+        tc_temp := sensor.tc_temp()
+        ser.printf1(@"Temp (deg %c):\n\r", tscl)
+
+        ' scale the temperature measurements down (from hundredths of a degree) for display:
+        ser.printf2(@"Cold junction: %3.3d.%02.2d\n\r", (cj_temp / 100), ...    ' whole
+                                                        ||(cj_temp // 100))     ' fractional
+        ser.printf2(@"Thermocouple: %3.3d.%02.2d\n\r",  (tc_temp / 100), ...
+                                                        ||(tc_temp // 100))
+
+
+PUB setup()
+
+    ser.start()
     time.msleep(30)
-    ser.clear{}
+    ser.clear()
     ser.strln(@"Serial terminal started")
 
-    if ( sensor.start{} )
+    if ( sensor.start() )
         ser.strln(@"MAX31856 driver started")
     else
         ser.strln(@"MAX31856 driver failed to start - halting")
         repeat
 
-    sensor.temp_scale(sensor#C)                   ' C, F, K
-    sensor.tc_type(sensor#TYPE_K)
-    ' TYPE_B (0), TYPE_E (1), TYPE_J (2), TYPE_K (3)
-    ' TYPE_N (4), TYPE_R (5), TYPE_S (6), TYPE_T (7)
-
-    sensor.cj_bias(0)                            ' -8_0000..7_9375 (= x.xxxx C)
-    sensor.notch_filt_freq(60)                   ' 50, 60 (Hz)
-    sensor.opmode(sensor.CONT)
-    demo{}
-
-#include "tempdemo.common.spinh"                ' code common to all temp demos
 
 DAT
 {
-Copyright 2023 Jesse Burt
+Copyright 2024 Jesse Burt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
