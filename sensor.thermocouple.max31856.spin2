@@ -3,7 +3,7 @@
     Filename:       sensor.thermocouple.max31856.spin2
     Description:    Driver for the MAX31856 thermocouple amplifier
     Author:         Jesse Burt
-    Started:        Nov 21, 2019
+    Started:        Sep 30, 2018
     Updated:        Sep 6, 2024
     Copyright (c) 2024 - See end of file for terms of use.
 ----------------------------------------------------------------------------------------------------
@@ -81,6 +81,7 @@ PUB startx(CS_PIN, SCK_PIN, SDI_PIN, SDO_PIN, SCK_HZ): status
 '   SCK_PIN:    Serial Clock, 0..63
 '   MOSI_PIN:   Master-Out Slave-In, 0..63
 '   MISO_PIN:   Master-In Slave-Out, 0..63
+'   SCK_HZ:     SPI bus speed (5_000_000 max; unenforced)
 '   Returns:
 '       cog ID+1 of SPI engine on success
 '       0 on failure
@@ -105,24 +106,21 @@ PUB stop()
 
 PUB cj_int_hi_thresh(): thresh
 ' Get Cold-Junction HIGH fault threshold
-    thresh := 0
-    readreg(core.CJHF, 1, @thresh)
+    thresh := readreg(core.CJHF)
     return (thresh signx 15)
 
 
 PUB cj_int_set_hi_thresh(thresh)
 ' Set Cold-Junction HIGH fault threshold
 '   Valid values: -128..127 (default: 127; clamped to range)
-    thresh := -128 #> thresh <# 127
-    writereg(core.CJHF, 1, @thresh)
+    writereg(core.CJHF, 1, (-128 #> thresh <# 127) )
 
 
 PUB cj_int_lo_thresh(): thresh
 ' Set Cold-Junction LOW fault threshold
 '   Valid values: -128..127 (default: -64)
 '   Any other value polls the chip and returns the current setting
-    thresh := 0
-    readreg(core.CJLF, 1, @thresh)
+    thresh := readreg(core.CJLF)
     return (thresh signx 15)
 
 
@@ -137,13 +135,12 @@ PUB cj_sensor_ena(state=-2): curr_state
 ' Enable the on-chip Cold-Junction temperature sensor
 '   Valid values: *TRUE (-1 or 1), FALSE
 '   Any other value polls the chip and returns the current setting
-    curr_state := 0
-    readreg(core.CR0, 1, @curr_state)
+    curr_state := readreg(core.CR0)
     case abs(state)
         0, 1:
-            state := (abs(state) ^ 1) << core.CJ' logic is inverted in the reg
+            state := (abs(state) ^ 1) << core.CJ ' logic is inverted in the reg
             state := ((curr_state & core.CJ_MASK) | state)
-            writereg(core.CR0, 1, @state)
+            writereg(core.CR0, 1, state)
         other:                                  ' so flip the bit
             return (((curr_state >> core.CJ) & 1) ^ 1) == 1
 
@@ -165,18 +162,16 @@ PUB cj_bias(offset=negx): curr_offs
     case offset
         -8_0000..7_9375:
             offset /= 0_0625
-            writereg(core.CJTO, 1, @offset)
+            writereg(core.CJTO, 1, offset)
         other:
-            curr_offs := 0
-            readreg(core.CJTO, 1, @curr_offs)
+            curr_offs := readreg(core.CJTO)
             return ((curr_offs signx 7) * 0_0625)
 
 
 PUB cj_data(): cj_word
 ' Read cold-junction data
 '   Returns: s16
-    cj_word := 0
-    readreg(core.CJTH, 2, @cj_word)
+    cj_word := readreg(core.CJTH, 2)
     cj_word signx= 15                           ' extend sign from bit 15
     cj_word sar= 2                              ' right-justify, keeping sign
                                                 ' (ADC word is left-justified)
@@ -185,11 +180,10 @@ PUB cj_data(): cj_word
 PUB int_clear() | tmp
 ' Clear fault status
 '   NOTE: This has no effect when int_latch_ena() is set to FALSE
-    tmp := 0
-    readreg(core.CR0, 1, @tmp)
+    tmp := readreg(core.CR0)
     tmp &= core.FAULTCLR_MASK
     tmp := (tmp | (1 << core.FAULTCLR))
-    writereg(core.CR0, 1, @tmp)
+    writereg(core.CR0, 1, tmp)
 
 
 PUB int_latch_ena(state=-2): curr_state
@@ -202,13 +196,12 @@ PUB int_latch_ena(state=-2): curr_state
 '       NOTE: If the fault condition is still true when the status is cleared,
 '       the flag will be asserted again immediately.
 '   Any other value polls the chip and returns the current setting
-    curr_state := 0
-    readreg(core.CR0, 1, @curr_state)
+    curr_state := readreg(core.CR0)
     case abs(state)
         0, 1:
             state := (state & 1) << core.FAULT
             state := ((curr_state & core.FAULT_MASK) | state)
-            writereg(core.CR0, 1, @curr_state)
+            writereg(core.CR0, 1, curr_state)
         other:
             return ((curr_state >> core.FAULT) & 1)
 
@@ -234,11 +227,9 @@ PUB int_mask(mask=-2): curr_mask
             ' before actually writing it to the chip
             mask := (mask ^ core.FAULTMASK_MASK)
             mask |= (core.RSVD_BITS << core.RSVD)
-            writereg(core.FAULTMASK, 1, @mask)
+            writereg(core.FAULTMASK, 1, mask)
         other:
-            curr_mask := 0
-            readreg(core.FAULTMASK, 1, @curr_mask)
-            return (curr_mask ^ core.FAULTMASK_MASK)
+            return ( readreg(core.FAULTMASK) ^ core.FAULTMASK_MASK )
 
 
 PUB interrupt(): src
@@ -258,8 +249,7 @@ PUB interrupt(): src
 '   NOTE: Asserted interrupts will always be flagged in this register,
 '       regardless of the set interrupt mask
 '   NOTE: FAULT pin is active low
-    src := 0
-    readreg(core.SR, 1, @src)
+    return readreg(core.SR)
 
 
 PUB measure() | tmp
@@ -271,8 +261,7 @@ PUB measure() | tmp
 '   50Hz                169ms
 '   NOTE: Conversion times will be reduced by approximately 25ms if the
 '       cold-junction sensor is disabled
-    tmp := 0
-    readreg(core.CR0, 1, @tmp)
+    tmp := readreg(core.CR0)
     tmp &= core.ONESHOT_MASK
     tmp := (tmp | (1 << core.ONESHOT))
     writereg(core.CR0, 1, @tmp)
@@ -286,13 +275,12 @@ PUB notch_filt_freq(freq=-2): curr_freq | opmode_orig
 '   settings per the MAX31856 datasheet, if it isn't already.
     opmode_orig := opmode()                     ' remember the user's current operating mode
     opmode(SINGLE)
-    curr_freq := 0
-    readreg(core.CR0, 1, @curr_freq)
+    curr_freq := readreg(core.CR0)
     case freq
         50, 60:
             freq := lookdownz(freq: 60, 50)
             freq := ((curr_freq & core.NOTCHFILT_MASK) | freq)
-            writereg(core.CR0, 1, @freq)
+            writereg(core.CR0, 1, freq)
             opmode(opmode_orig)                 ' restore the user's operating mode
         other:
             opmode(opmode_orig)
@@ -304,13 +292,12 @@ PUB oc_fault_test_time(time_ms=-2): curr_time 'XXX Note recommendations based on
 ' Sets open-circuit fault detection test time, in ms
 '   Valid values: 0 (disable fault detection), 10, 32, 100
 '   Any other value polls the chip and returns the current setting
-    curr_time := 0
-    readreg(core.CR0, 1, @curr_time)
+    curr_time := readreg(core.CR0)
     case time_ms
         0, 10, 32, 100:
             time_ms := lookdownz(time_ms: 0, 10, 32, 100) << core.OCFAULT
             time_ms := ((curr_time & core.OCFAULT_MASK) | time_ms)
-            writereg(core.CR0, 1, @time_ms)
+            writereg(core.CR0, 1, time_ms)
         other:
             result := ((curr_time >> core.OCFAULT) & core.OCFAULT_BITS)
             return lookupz(result: 0, 10, 32, 100)
@@ -323,13 +310,12 @@ PUB opmode(mode=-2): curr_mode
 '       CONT (1): Continuous conversion
 '   Any other value polls the chip and returns the current setting
 '   NOTE: In CONT mode, conversions occur continuously approx. every 100ms
-    curr_mode := 0
-    readreg(core.CR0, 1, @curr_mode)
+    curr_mode := readreg(core.CR0)
     case mode
         SINGLE, CONT:
             mode := (mode << core.CMODE)
             mode := ((curr_mode & core.CMODE_MASK) | mode)
-            writereg(core.CR0, 1, @mode)
+            writereg(core.CR0, 1, mode)
         other:
             return (curr_mode >> core.CMODE) & 1
 
@@ -338,13 +324,12 @@ PUB tc_smp_avg(samples=-2): curr_smp
 ' Set number of samples averaged during thermocouple conversion
 '   Valid values: *1, 2, 4, 8, 16
 '   Any other value polls the chip and returns the current setting
-    curr_smp := 0
-    readreg(core.CR1, 1, @curr_smp)
+    curr_smp := readreg(core.CR1)
     case samples
         1, 2, 4, 8, 16:
             samples := lookdownz(samples: 1, 2, 4, 8, 16) << core.AVGSEL
             samples := ((curr_smp & core.AVGSEL_MASK) | samples)
-            writereg(core.CR1, 1, @samples)
+            writereg(core.CR1, 1, samples)
         other:
             curr_smp := (curr_smp >> core.AVGSEL) & core.AVGSEL_BITS
             return lookupz(curr_smp: 1, 2, 4, 8, 16)
@@ -353,33 +338,28 @@ PUB tc_smp_avg(samples=-2): curr_smp
 PUB tc_data(): temp_word
 ' Read thermocouple data
 '   Returns: s19
-    temp_word := 0
-    readreg(core.LTCBH, 3, @temp_word)
+    temp_word := readreg(core.LTCBH, 3)
     temp_word signx= 23                         ' extend sign from bit 23
     temp_word sar= 5                            ' right-justify, keeping sign
                                                 ' (ADC word is left-justified)
 
-
 PUB tc_int_hi_thresh(): thresh
 ' Get thermocouple interrupt high threshold
-    thresh := 0
-    readreg(core.LTHFTH, 2, @thresh)
+    thresh := readreg(core.LTHFTH, 2)
     return (thresh signx 15)
 
 
 PUB tc_int_set_hi_thresh(thresh)
 ' Set thermocouple interrupt high threshold
 '   Valid values: -32768..32767 (default: 32767)
-    thresh := -32768 #> thresh <# 32767
-    writereg(core.LTHFTH, 2, @thresh)
+    writereg(core.LTHFTH, 2, (-32768 #> thresh <# 32767) )
 
 
 PUB tc_int_lo_thresh(): thresh
 ' Set thermocouple interrupt low threshold
 '   Valid values: -32768..32767 (default: -32768)
 '   Any other value polls the chip and returns the current setting
-    thresh := 0
-    readreg(core.LTLFTH, 2, @thresh)
+    thresh := readreg(core.LTLFTH, 2)
     return (thresh signx 15)
 
 
@@ -387,8 +367,7 @@ PUB tc_int_set_lo_thresh(thresh)
 ' Set thermocouple interrupt low threshold
 '   Valid values: -32768..32767 (default: -32768)
 '   Any other value polls the chip and returns the current setting
-    thresh := -32768 #> thresh <# 32767
-    writereg(core.LTLFTH, 2, @thresh)
+    writereg(core.LTLFTH, 2, (-32768 #> thresh <# 32767) )
 
 
 PUB tc_type(type=-2): curr_type
@@ -396,12 +375,11 @@ PUB tc_type(type=-2): curr_type
 '   Valid values: TYPE_B (0), TYPE_E (1), TYPE_J (2), *TYPE_K (3), TYPE_N (4),
 '       TYPE_R (5), TYPE_S (6), TYPE_T (7)
 '   Any other value polls the chip and returns the current setting
-    curr_type := 0
-    readreg(core.CR1, 1, @curr_type)
+    curr_type := readreg(core.CR1)
     case type
         TYPE_B, TYPE_E, TYPE_J, TYPE_K, TYPE_N, TYPE_R, TYPE_S, TYPE_T:
             type := ((curr_type & core.TC_TYPE_MASK) | type)
-            writereg(core.CR1, 1, @type)
+            writereg(core.CR1, 1, type)
         other:
             return curr_type & core.TC_TYPE_BITS
 
@@ -416,29 +394,31 @@ PUB tc_word2temp(tc_word): temp
             temp := ((temp * 90) / 50) + 32_00
 
 
-PRI readreg(reg_nr, nr_bytes, ptr_buff) | tmp
+PRI readreg(reg_nr, nr_bytes=1): v | tmp
 ' Read nr_bytes from device into ptr_buff
     case reg_nr                                 ' validate register
         core.CR0..core.SR:
+            v := 0
             pinl(_CS)
             spi.wr_byte(reg_nr)                         ' shift out reg number
-            spi.rdblock_msbf(ptr_buff, nr_bytes)        ' then read data, MSByte-first
+            spi.rdblock_msbf(@v, nr_bytes)        ' then read data, MSByte-first
             pinh(_CS)
         other:                                  ' invalid; return
-            return
+            return -1
 
 
-PRI writereg(reg_nr, nr_bytes, ptr_buff) | tmp
+PRI writereg(reg_nr, nr_bytes, val): s | tmp
 ' Write nr_bytes from ptr_buff to device
     case reg_nr
         core.CR0..core.CJTL:
             reg_nr |= core.WRITE_REG            ' OR reg_nr with $80 to write
             pinl(_CS)
             spi.wr_byte(reg_nr)
-            spi.wrblock_msbf(ptr_buff, nr_bytes)
+            spi.wrblock_msbf(@val, nr_bytes)
             pinh(_CS)
+            return nr_bytes
         other:
-            return
+            return -1
 
 
 DAT
