@@ -239,7 +239,7 @@ PUB interrupt(): src
 '       1: Fault detected
 '
 '   Bit 7   Cold-junction out of normal operating range
-'       6   Thermcouple out of normal operating range
+'       6   Thermocouple out of normal operating range
 '       5   Cold-junction above HIGH temperature threshold
 '       4   Cold-junction below LOW temperature threshold
 '       3   Thermocouple temperature above HIGH temperature threshold
@@ -400,8 +400,8 @@ PRI readreg(reg_nr, nr_bytes=1): v | tmp
         core.CR0..core.SR:
             v := 0
             pinl(_CS)
-            spi.wr_byte(reg_nr)                         ' shift out reg number
-            spi.rdblock_msbf(@v, nr_bytes)        ' then read data, MSByte-first
+            spi.wr_byte(reg_nr)                 ' shift out reg number
+            spi.rdblock_msbf(@v, nr_bytes)      ' then read data, MSByte-first
             pinh(_CS)
         other:                                  ' invalid; return
             return -1

@@ -244,7 +244,7 @@ PUB interrupt(): src
 '       1: Fault detected
 '
 '   Bit 7   Cold-junction out of normal operating range
-'       6   Thermcouple out of normal operating range
+'       6   Thermocouple out of normal operating range
 '       5   Cold-junction above HIGH temperature threshold
 '       4   Cold-junction below LOW temperature threshold
 '       3   Thermocouple temperature above HIGH temperature threshold
