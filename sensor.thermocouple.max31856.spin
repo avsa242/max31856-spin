@@ -4,7 +4,7 @@
     Description:    Driver for the MAX31856 thermocouple amplifier
     Author:         Jesse Burt
     Started:        Sep 30, 2018
-    Updated:        Sep 6, 2024
+    Updated:        Sep 24, 2024
     Copyright (c) 2024 - See end of file for terms of use.
 ----------------------------------------------------------------------------------------------------
 }
@@ -206,7 +206,7 @@ PUB int_latch_ena(state=-2): curr_state
         0, 1:
             state := (state & 1) << core.FAULT
             state := ((curr_state & core.FAULT_MASK) | state)
-            writereg(core.CR0, 1, curr_state)
+            writereg(core.CR0, 1, state)
         other:
             return ((curr_state >> core.FAULT) & 1)
 
